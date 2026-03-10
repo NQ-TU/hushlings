@@ -1,0 +1,11 @@
+XRHandModifier3D
+OpenXRFbHandTrackingMesh
+XRNode3D
+OpenXRHand
+MeshInstance3D
+XRController3D
+Area3D
+DirectionalLight3D
+WorldEnvironment
+XRCamera3D
+XROrigin3D
