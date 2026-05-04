@@ -1,0 +1,70 @@
+[gd_scene format=3 uid="uid://b1jxojh134fl5"]
+
+[ext_resource type="Script" uid="uid://d4fyt37o55fwh" path="res://scripts/visuals/HushlingVisual.gd" id="1_visual"]
+
+[node name="HushlingVisual_Timid" type="Node3D" unique_id=1044918979]
+script = ExtResource("1_visual")
+eye_radius = 0.155
+eye_depth = 0.035
+iris_scale = 0.53
+pupil_scale = 0.3
+back_core_depth = 0.105
+attachment_radius = 0.155
+tendril_segment_length = 0.072
+tendril_base_radius = 0.018
+tendril_tip_radius_factor = 0.28
+ring_depth_offset = 0.04
+front_ring_back_sweep = 0.14
+rear_ring_radius_scale = 0.76
+rear_ring_depth_offset = 0.09
+rear_tendril_length_scale = 0.82
+rear_tendril_radius_scale = 0.72
+rear_ring_back_sweep = 0.42
+eye_color = Color(0.78, 0.9, 0.86, 1)
+iris_color = Color(0.28, 0.58, 0.66, 1)
+pupil_color = Color(0.006, 0.008, 0.013, 1)
+core_color = Color(0.055, 0.04, 0.07, 1)
+tendril_color = Color(0.12, 0.045, 0.11, 1)
+accent_color = Color(0.58, 0.18, 0.38, 1)
+eye_emission_strength = 1.15
+accent_emission_strength = 0.55
+head_turn_response = 3.0
+movement_lean_amount = 4.4
+head_pulse_amount = 0.022
+head_pulse_frequency = 0.38
+drift_amplitude = 0.014
+drift_frequency = 0.25
+velocity_response = 4.4
+visual_target_turn_degrees_per_second = 200.0
+max_eye_lead_degrees = 24.0
+max_bank_degrees = 14.0
+bank_response = 5.4
+tendril_trail_strength = 0.82
+tendril_spread_strength = 0.86
+tendril_sway_amount = 0.72
+tendril_movement_flail_strength = 0.4
+tendril_movement_flail_frequency = 1.18
+tendril_movement_flail_vertical = 0.32
+tendril_follow_speed = 0.78
+tendril_base_rigidity = 0.72
+tendril_distal_drag_bias = 0.52
+tendril_turn_drag_strength = 0.74
+tendril_rest_shape_strength = 0.32
+tendril_inward_hook_guard = 0.68
+fear_curl_strength = 1.18
+confidence_spread_strength = 0.56
+curiosity_eye_strength = 0.65
+loneliness_droop = 0.02
+animate_in_editor = true
+
+[node name="PoseRoot" type="Node3D" parent="." unique_id=34890412]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.01030049, 0)
+
+[node name="EyeRoot" type="Node3D" parent="PoseRoot" unique_id=1588058065]
+
+[node name="CoreRoot" type="Node3D" parent="PoseRoot" unique_id=423616617]
+transform = Transform3D(1.0216101, 0, 0, 0, 1.0216101, 0, 0, 0, 1.0216101, 0, 0, 0)
+
+[node name="TendrilRoot" type="Node3D" parent="PoseRoot" unique_id=2040743505]
+
+[node name="AccentRoot" type="Node3D" parent="PoseRoot" unique_id=641929909]

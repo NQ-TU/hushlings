@@ -1,0 +1,59 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="PackedScene" path="res://scenes/visuals/HushlingVisual_Timid.tscn" id="1_timid_visual"]
+
+[node name="HushlingVisual_Bold" instance=ExtResource("1_timid_visual")]
+eye_radius = 0.17
+eye_depth = 0.038
+iris_scale = 0.47
+pupil_scale = 0.26
+back_core_depth = 0.118
+tendril_count = 12
+attachment_radius = 0.178
+tendril_segments = 8
+tendril_segment_length = 0.079
+tendril_base_radius = 0.02
+tendril_tip_radius_factor = 0.31
+ring_depth_offset = 0.046
+front_ring_back_sweep = 0.16
+rear_ring_radius_scale = 0.84
+rear_ring_depth_offset = 0.104
+rear_tendril_length_scale = 0.92
+rear_tendril_radius_scale = 0.82
+rear_ring_back_sweep = 0.46
+eye_color = Color(0.9, 0.95, 0.88, 1)
+iris_color = Color(0.42, 0.62, 0.72, 1)
+core_color = Color(0.072, 0.042, 0.082, 1)
+tendril_color = Color(0.155, 0.05, 0.13, 1)
+accent_color = Color(0.78, 0.22, 0.46, 1)
+eye_emission_strength = 1.32
+accent_emission_strength = 0.72
+core_emission_strength = 0.1
+head_turn_response = 3.8
+movement_lean_amount = 5.8
+head_pulse_amount = 0.018
+head_pulse_frequency = 0.46
+drift_amplitude = 0.016
+drift_frequency = 0.31
+velocity_response = 5.2
+visual_target_turn_degrees_per_second = 240.0
+max_eye_lead_degrees = 30.0
+max_bank_degrees = 18.0
+bank_response = 6.4
+tendril_trail_strength = 1.0
+tendril_spread_strength = 1.12
+tendril_sway_amount = 0.64
+tendril_movement_flail_strength = 0.48
+tendril_movement_flail_frequency = 1.36
+tendril_movement_flail_vertical = 0.38
+tendril_follow_speed = 0.9
+tendril_rigid_base_segments = 2
+tendril_base_rigidity = 0.66
+tendril_distal_drag_bias = 0.58
+tendril_turn_drag_strength = 0.82
+tendril_rest_shape_strength = 0.28
+tendril_inward_hook_guard = 0.6
+fear_curl_strength = 0.92
+confidence_spread_strength = 0.82
+curiosity_eye_strength = 0.58
+loneliness_droop = 0.014

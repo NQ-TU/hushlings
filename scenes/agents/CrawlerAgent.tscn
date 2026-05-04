@@ -1,80 +1,15 @@
-[gd_scene load_steps=8 format=3]
+[gd_scene load_steps=3 format=3]
 
 [ext_resource type="Script" path="res://scripts/agents/CrawlerAgent.gd" id="1_crawler_agent"]
-
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_body"]
-albedo_color = Color(0.21, 0.28, 0.24, 1)
-roughness = 0.62
-emission_enabled = true
-emission = Color(0.02, 0.08, 0.06, 1)
-emission_energy_multiplier = 0.12
-
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_accent"]
-albedo_color = Color(0.38, 0.55, 0.42, 1)
-roughness = 0.58
-emission_enabled = true
-emission = Color(0.12, 0.36, 0.18, 1)
-emission_energy_multiplier = 0.25
-
-[sub_resource type="SphereMesh" id="SphereMesh_large_segment"]
-radius = 0.15
-height = 0.3
-radial_segments = 16
-rings = 8
-
-[sub_resource type="SphereMesh" id="SphereMesh_mid_segment"]
-radius = 0.125
-height = 0.25
-radial_segments = 16
-rings = 8
-
-[sub_resource type="SphereMesh" id="SphereMesh_small_segment"]
-radius = 0.095
-height = 0.19
-radial_segments = 12
-rings = 6
-
-[sub_resource type="SphereMesh" id="SphereMesh_sensor"]
-radius = 0.025
-height = 0.05
-radial_segments = 8
-rings = 4
+[ext_resource type="PackedScene" path="res://scenes/visuals/CrawlerVisual.tscn" id="2_crawler_visual"]
 
 [node name="CrawlerAgent" type="Node3D" groups=["interest_entity"]]
 script = ExtResource("1_crawler_agent")
 max_speed = 0.26
 max_force = 0.24
 mass = 1.25
+face_movement_direction = false
 rotation_response = 2.6
 
-[node name="VisualRoot" type="Node3D" parent="."]
-
-[node name="HeadSegment" type="MeshInstance3D" parent="VisualRoot"]
-transform = Transform3D(1.2, 0, 0, 0, 0.72, 0, 0, 0, 0.86, 0, 0, -0.23)
-material_override = SubResource("StandardMaterial3D_body")
-mesh = SubResource("SphereMesh_large_segment")
-
-[node name="FrontSensor" type="MeshInstance3D" parent="VisualRoot/HeadSegment"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.035, -0.13)
-material_override = SubResource("StandardMaterial3D_accent")
-mesh = SubResource("SphereMesh_sensor")
-
-[node name="BodySegmentA" type="MeshInstance3D" parent="VisualRoot"]
-transform = Transform3D(1.04, 0, 0, 0, 0.62, 0, 0, 0, 0.8, 0, 0, -0.03)
-material_override = SubResource("StandardMaterial3D_body")
-mesh = SubResource("SphereMesh_mid_segment")
-
-[node name="BodySegmentB" type="MeshInstance3D" parent="VisualRoot"]
-transform = Transform3D(0.94, 0, 0, 0, 0.56, 0, 0, 0, 0.76, 0, 0, 0.16)
-material_override = SubResource("StandardMaterial3D_body")
-mesh = SubResource("SphereMesh_mid_segment")
-
-[node name="TailSegment" type="MeshInstance3D" parent="VisualRoot"]
-transform = Transform3D(0.76, 0, 0, 0, 0.46, 0, 0, 0, 0.7, 0, 0, 0.33)
-material_override = SubResource("StandardMaterial3D_body")
-mesh = SubResource("SphereMesh_small_segment")
-
-[node name="BackAccent" type="MeshInstance3D" parent="VisualRoot"]
-transform = Transform3D(0.22, 0, 0, 0, 0.08, 0, 0, 0, 1.9, 0, 0.055, 0.1)
-material_override = SubResource("StandardMaterial3D_accent")
-mesh = SubResource("SphereMesh_sensor")
+[node name="VisualRoot" parent="." instance=ExtResource("2_crawler_visual")]
+scale = Vector3(0.72, 0.72, 0.72)

@@ -39,10 +39,8 @@ const FleeMemoryHelper := preload("res://scripts/agents/FleeMemory.gd")
 @export_range(0.1, 10.0, 0.01) var player_hand_flee_safe_radius: float = 1.0
 @export_range(0.0, 5.0, 0.01) var player_hand_flee_speed_scale: float = 1.35
 
-@export_group("Placeholder Visual")
+@export_group("Visual")
 @export var visual_root_path: NodePath = ^"VisualRoot"
-@export_range(0.0, 0.2, 0.001) var crawl_wave_amount: float = 0.025
-@export_range(0.01, 5.0, 0.01) var crawl_wave_frequency: float = 0.9
 
 var home_position: Vector3 = Vector3.ZERO
 var current_wander_direction: Vector3 = Vector3.FORWARD
@@ -73,6 +71,8 @@ func _ready() -> void:
 	direction = current_wander_direction
 	target_direction = current_wander_direction
 	_visual_root = get_node_or_null(visual_root_path) as Node3D
+	if _visual_root and _visual_root.has_method(&"bind_agent"):
+		_visual_root.call(&"bind_agent", self)
 
 
 func _process(delta: float) -> void:
@@ -93,7 +93,7 @@ func _process(delta: float) -> void:
 
 	desired_velocity_for_frame += _calculate_obstacle_avoidance(desired_velocity_for_frame)
 	apply_desired_velocity(desired_velocity_for_frame, delta)
-	_update_placeholder_visual()
+	_update_visual()
 
 
 func _update_wander_direction(delta: float) -> void:
@@ -187,13 +187,16 @@ func _calculate_player_hand_flee_velocity() -> Vector3:
 	)
 
 
-func _update_placeholder_visual() -> void:
+func _update_visual() -> void:
 	if not _visual_root:
 		return
 
-	var wave_phase: float = _elapsed_time * TAU * crawl_wave_frequency + _wander_seed
-	_visual_root.position.y = sin(wave_phase) * crawl_wave_amount
-	_visual_root.rotation.z = sin(wave_phase * 0.73) * crawl_wave_amount * 2.0
+	if _visual_root.has_method(&"set_velocity"):
+		_visual_root.call(&"set_velocity", velocity)
+	if _visual_root.has_method(&"set_target_direction"):
+		_visual_root.call(&"set_target_direction", target_direction)
+	if _visual_root.has_method(&"set_agent_state"):
+		_visual_root.call(&"set_agent_state", current_state)
 
 
 func _sample_wander_direction(time: float) -> Vector3:

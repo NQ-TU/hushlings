@@ -1,0 +1,59 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/visuals/CrawlerVisual.gd" id="1_crawler_visual"]
+
+[node name="CrawlerVisual" type="Node3D"]
+script = ExtResource("1_crawler_visual")
+segment_count = 8
+body_length = 1.26
+body_width = 0.3
+body_height = 0.085
+body_depth = 0.25
+tail_taper = 0.42
+initial_curve_amount = 0.06
+head_scale = Vector3(0.24, 0.12, 0.34)
+sensor_slit_width = 0.045
+sensor_slit_height = 0.014
+sweeper_pairs = 4
+sweeper_segment_length = 0.105
+sweeper_radius = 0.023
+feeler_segment_length = 0.12
+feeler_radius = 0.016
+wave_amount = 0.075
+wave_frequency = 0.48
+follow_lag = 1.1
+feeler_sway_amount = 0.035
+idle_motion_amount = 0.012
+flee_tension_amount = 0.62
+drift_amplitude = 0.035
+drift_frequency = 0.34
+body_pulse_amount = 0.035
+pulse_frequency = 0.78
+vertical_wave_amount = 0.065
+body_lag_amount = 0.035
+spine_chain_follow_speed = 4.6
+head_turn_response = 2.45
+vertical_turn_influence = 0.65
+body_turn_follow_speed = 0.82
+body_turn_lag_amount = 0.72
+body_turn_distribution = 0.58
+movement_lean_amount = 8.0
+startled_curl_amount = 0.28
+velocity_response = 1.55
+appendage_sweep_strength = 0.9
+ribbon_color = Color(0.055, 0.065, 0.09, 1)
+underside_color = Color(0.085, 0.045, 0.075, 1)
+appendage_color = Color(0.12, 0.055, 0.105, 1)
+sensor_color = Color(0.56, 0.9, 0.84, 1)
+ridge_color = Color(0.16, 0.1, 0.15, 1)
+sensor_emission_strength = 1.35
+
+[node name="PoseRoot" type="Node3D" parent="."]
+
+[node name="SpineRoot" type="Node3D" parent="PoseRoot"]
+
+[node name="SensorRoot" type="Node3D" parent="PoseRoot"]
+
+[node name="AppendageRoot" type="Node3D" parent="PoseRoot"]
+
+[node name="AccentRoot" type="Node3D" parent="PoseRoot"]
