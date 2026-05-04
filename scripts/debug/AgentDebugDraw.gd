@@ -18,10 +18,7 @@ const OBSTACLE_HIT_COLOR := Color(1.0, 0.18, 0.28, 0.86)
 const HAND_FLEE_COLOR := Color(1.0, 0.18, 0.05, 0.9)
 
 @export_group("Debug")
-@export var debug_enabled: bool = true:
-	set(value):
-		debug_enabled = value
-		set_process(debug_enabled)
+@export var debug_enabled: bool = true
 @export var target_path: NodePath
 @export_enum("Auto", "Hushling", "Crawler") var agent_kind: String = "Auto"
 @export var allow_keyboard_toggle: bool = true
@@ -55,7 +52,6 @@ var _debug_draw_3d: Object
 func _ready() -> void:
 	_resolve_target()
 	_resolve_debug_draw()
-	set_process(debug_enabled)
 
 
 func _unhandled_input(event: InputEvent) -> void:

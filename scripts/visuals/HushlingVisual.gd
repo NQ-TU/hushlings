@@ -168,9 +168,6 @@ const VALID_VISUAL_STATES := [
 @export_range(0.0, 2.0, 0.01) var curiosity_eye_strength: float = 0.58
 @export_range(0.0, 0.12, 0.001) var loneliness_droop: float = 0.018
 
-@export_group("Performance")
-@export_range(0.0, 90.0, 1.0) var visual_update_rate_hz: float = 30.0
-
 @export_group("Editor")
 @export var build_on_ready: bool = true
 @export var animate_in_editor: bool = false
@@ -200,7 +197,6 @@ var _motion_forward: Vector3 = Vector3.FORWARD
 var _bank_angle: float = 0.0
 var _turn_swing: float = 0.0
 var _rebuild_requested: bool = false
-var _visual_update_accumulator: float = 0.0
 
 var _pose_root: Node3D
 var _eye_root: Node3D
@@ -233,28 +229,24 @@ func _process(delta: float) -> void:
 	if auto_bind_parent and (_agent == null or not is_instance_valid(_agent)):
 		_try_bind_parent()
 
-	var visual_delta: float = _consume_visual_delta(delta)
-	if visual_delta <= 0.0:
-		return
-
 	if read_agent_each_frame:
 		_read_agent_values()
 
-	_animation_time += visual_delta
-	_state_age += visual_delta
+	_animation_time += delta
+	_state_age += delta
 	var previous_state: String = _visual_state
 	_visual_state = _resolve_visual_state()
 	if previous_state != _visual_state:
 		_state_age = 0.0
 
-	var velocity_alpha: float = 1.0 - exp(-velocity_response * visual_delta)
+	var velocity_alpha: float = 1.0 - exp(-velocity_response * delta)
 	_velocity = _velocity.lerp(_desired_velocity, velocity_alpha)
-	_update_visual_target_direction(visual_delta)
+	_update_visual_target_direction(delta)
 
-	_update_head_motion(visual_delta)
-	_update_eye_motion(visual_delta)
+	_update_head_motion(delta)
+	_update_eye_motion(delta)
 	_update_state_scale()
-	_update_tendrils(visual_delta)
+	_update_tendrils(delta)
 
 
 func bind_agent(agent: Node) -> void:
@@ -265,20 +257,6 @@ func bind_agent(agent: Node) -> void:
 
 	for property in _agent.get_property_list():
 		_agent_properties[StringName(property.get("name", ""))] = true
-
-
-func _consume_visual_delta(delta: float) -> float:
-	if visual_update_rate_hz <= 0.0:
-		return delta
-
-	_visual_update_accumulator += delta
-	var step: float = 1.0 / visual_update_rate_hz
-	if _visual_update_accumulator < step:
-		return 0.0
-
-	var consumed: float = min(_visual_update_accumulator, step * 2.0)
-	_visual_update_accumulator = 0.0
-	return consumed
 
 
 func set_agent_state(state_name: String) -> void:
