@@ -1,0 +1,66 @@
+[gd_scene format=3 uid="uid://dx8xbswmydhbb"]
+
+[ext_resource type="PackedScene" path="res://scenes/agents/HushlingAgent.tscn" id="1_hushling_agent"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_floor"]
+albedo_color = Color(0.04, 0.045, 0.055, 1)
+roughness = 0.88
+
+[sub_resource type="PlaneMesh" id="PlaneMesh_floor"]
+size = Vector2(4, 4)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_home_marker"]
+albedo_color = Color(0.22, 0.42, 0.62, 1)
+roughness = 0.55
+emission_enabled = true
+emission = Color(0.1, 0.28, 0.42, 1)
+emission_energy_multiplier = 0.18
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_home_marker"]
+top_radius = 0.018
+bottom_radius = 0.018
+height = 0.7
+radial_segments = 12
+
+[sub_resource type="Sky" id="Sky_behaviour_sandbox"]
+
+[sub_resource type="Environment" id="Environment_behaviour_sandbox"]
+background_mode = 1
+sky = SubResource("Sky_behaviour_sandbox")
+ambient_light_source = 2
+ambient_light_color = Color(0.48, 0.52, 0.58, 1)
+ambient_light_energy = 0.9
+reflected_light_source = 2
+
+[node name="BehaviourSandbox" type="Node3D" unique_id=482098564]
+
+[node name="HushlingAgent" parent="." unique_id=1845606375 instance=ExtResource("1_hushling_agent")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.34, 0)
+
+[node name="ReferenceFloor" type="MeshInstance3D" parent="." unique_id=352379870]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.02, 0)
+material_override = SubResource("StandardMaterial3D_floor")
+mesh = SubResource("PlaneMesh_floor")
+
+[node name="HomeMarker" type="MeshInstance3D" parent="." unique_id=1286372842]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.33, 0)
+material_override = SubResource("StandardMaterial3D_home_marker")
+mesh = SubResource("CylinderMesh_home_marker")
+
+[node name="Camera3D" type="Camera3D" parent="." unique_id=1431131189]
+transform = Transform3D(1, 0, 0, 0, 0.96105546, 0.27635565, 0, -0.27635565, 0.96105546, 0, 1.25, 3.2)
+current = true
+fov = 48.0
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=1474065907]
+environment = SubResource("Environment_behaviour_sandbox")
+
+[node name="KeyLight" type="DirectionalLight3D" parent="." unique_id=1736103680]
+transform = Transform3D(0.84699655, 0.4456063, -0.28988242, -0.12727456, 0.6994278, 0.7032794, 0.5161376, -0.5587805, 0.64912724, 0, 0, 0)
+light_energy = 1.2
+
+[node name="FillLight" type="OmniLight3D" parent="." unique_id=2032948290]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 1.4)
+light_color = Color(0.72, 0.86, 1, 1)
+light_energy = 0.72
+omni_range = 4.0
