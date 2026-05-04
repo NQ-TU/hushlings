@@ -1,6 +1,6 @@
 [gd_scene load_steps=7 format=3]
 
-[ext_resource type="Script" path="res://scripts/agents/AgentMotor3D.gd" id="1_motor"]
+[ext_resource type="Script" path="res://scripts/agents/HushlingAgent.gd" id="1_agent"]
 [ext_resource type="Script" path="res://scripts/debug/AgentDebugDraw.gd" id="2_debug"]
 
 [sub_resource type="SphereMesh" id="SphereMesh_body"]
@@ -27,7 +27,7 @@ emission_energy_multiplier = 0.32
 roughness = 0.48
 
 [node name="HushlingAgent" type="Node3D" groups=["hushling"]]
-script = ExtResource("1_motor")
+script = ExtResource("1_agent")
 
 [node name="TemporaryBodyVisual" type="MeshInstance3D" parent="."]
 mesh = SubResource("SphereMesh_body")

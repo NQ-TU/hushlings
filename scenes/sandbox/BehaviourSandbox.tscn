@@ -52,8 +52,6 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.34, 0)
 seek_target_path = NodePath("../SeekArriveTarget")
 arrive_target_path = NodePath("../SeekArriveTarget")
 flee_threat_path = NodePath("../FleeThreat")
-interest_target_path = NodePath("../SeekArriveTarget")
-threat_target_path = NodePath("../FleeThreat")
 flee_radius = 0.62
 flee_safe_radius = 1.0
 
