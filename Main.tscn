@@ -1,8 +1,10 @@
 [gd_scene format=3 uid="uid://b083bf3gen0ly"]
 
 [ext_resource type="Script" uid="uid://cw8oef75eb4af" path="res://main.gd" id="1_glv2v"]
-[ext_resource type="PackedScene" path="res://scenes/xr/XRAgentSpawner.tscn" id="2_xr_spawner"]
-[ext_resource type="Script" path="res://scripts/agents/PlayerInfluence.gd" id="4_player_influence"]
+[ext_resource type="PackedScene" uid="uid://c5cuaoduugrye" path="res://scenes/xr/XRAgentSpawner.tscn" id="2_xr_spawner"]
+[ext_resource type="AudioStream" uid="uid://b4xay1bpqa2q8" path="res://resources/audio/background.mp3" id="4_fos0i"]
+[ext_resource type="Script" uid="uid://c86qd5gttov06" path="res://scripts/agents/PlayerInfluence.gd" id="4_player_influence"]
+[ext_resource type="PackedScene" path="res://scenes/audio/AmbientAudioLoop.tscn" id="5_ambient_audio"]
 
 [sub_resource type="SphereShape3D" id="SphereShape3D_hand_obstacle"]
 radius = 0.16
@@ -24,7 +26,7 @@ script = ExtResource("1_glv2v")
 
 [node name="XRCamera3D" type="XRCamera3D" parent="XROrigin3D" unique_id=217891567]
 
-[node name="PlayerInfluence" type="Node3D" parent="XROrigin3D/XRCamera3D" groups=["player"]]
+[node name="PlayerInfluence" type="Node3D" parent="XROrigin3D/XRCamera3D" unique_id=213163959 groups=["player"]]
 script = ExtResource("4_player_influence")
 gaze_range = 2.4
 dead_center_gaze_degrees = 7.0
@@ -89,6 +91,9 @@ environment = SubResource("Environment_uu6xs")
 [node name="DirectionalLight3D" type="DirectionalLight3D" parent="." unique_id=1962853990]
 transform = Transform3D(0.9851303, -0.17180873, -7.509999e-09, 0.07421176, 0.42552117, 0.9019004, -0.15495437, -0.8884894, 0.43194404, 0, 2.5194075, 0.19579983)
 
+[node name="AmbientAudioLoop" parent="." unique_id=591184046 instance=ExtResource("5_ambient_audio")]
+stream = ExtResource("4_fos0i")
+
 [node name="CreatureRoot" type="Node3D" parent="." unique_id=1126233451]
 
-[node name="XRAgentSpawner" parent="." instance=ExtResource("2_xr_spawner")]
+[node name="XRAgentSpawner" parent="." unique_id=76089007 instance=ExtResource("2_xr_spawner")]

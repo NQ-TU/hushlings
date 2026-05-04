@@ -115,6 +115,9 @@ class_name HushlingProfile
 @export_group("Home Tether")
 @export_range(0.1, 10.0, 0.01) var home_radius: float = 1.25
 @export_range(0.0, 4.0, 0.01) var home_tether_strength: float = 0.72
+@export_range(0.1, 0.95, 0.01) var home_return_inner_ratio: float = 0.68
+@export_range(0.05, 1.0, 0.01) var home_return_speed_scale: float = 0.5
+@export_range(1.0, 180.0, 1.0) var home_return_turn_degrees_per_second: float = 58.0
 
 @export_group("Social Boids")
 @export var social_forces_enabled: bool = true

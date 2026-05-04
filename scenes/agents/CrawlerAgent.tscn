@@ -1,32 +1,38 @@
-[gd_scene load_steps=4 format=3]
+[gd_scene format=3 uid="uid://bc8owsqsxdefj"]
 
-[ext_resource type="Script" path="res://scripts/agents/CrawlerAgent.gd" id="1_crawler_agent"]
+[ext_resource type="Script" uid="uid://c1kgcvuunsbcu" path="res://scripts/agents/CrawlerAgent.gd" id="1_crawler_agent"]
 [ext_resource type="PackedScene" path="res://scenes/visuals/CrawlerVisual.tscn" id="2_crawler_visual"]
-[ext_resource type="Script" path="res://scripts/debug/AgentDebugDraw.gd" id="3_debug_draw"]
+[ext_resource type="Script" uid="uid://cdm828jbiuqhw" path="res://scripts/debug/AgentDebugDraw.gd" id="3_debug_draw"]
+[ext_resource type="PackedScene" path="res://scenes/audio/AgentAudioEmitter.tscn" id="4_audio"]
+[ext_resource type="AudioStream" uid="uid://b4jk8wlji5a5f" path="res://resources/audio/crawler-wander.mp3" id="5_wrh4f"]
+[ext_resource type="AudioStream" uid="uid://cqe8aolcy7fix" path="res://resources/audio/crawler-fleeflee.mp3" id="6_qyfpm"]
 
-[node name="CrawlerAgent" type="Node3D" groups=["interest_entity"]]
+[node name="CrawlerAgent" type="Node3D" unique_id=556334906 groups=["interest_entity"]]
 script = ExtResource("1_crawler_agent")
-max_speed = 0.34
-max_force = 0.3
-mass = 1.25
+max_speed = 0.38
+max_force = 0.38
+mass = 1.15
 turn_rate_limit_enabled = true
 max_turn_degrees_per_second = 95.0
 face_movement_direction = false
 rotation_response = 2.6
 
-[node name="VisualRoot" parent="." instance=ExtResource("2_crawler_visual")]
-scale = Vector3(0.72, 0.72, 0.72)
+[node name="VisualRoot" parent="." unique_id=2098050790 instance=ExtResource("2_crawler_visual")]
+transform = Transform3D(0.72, 0, 0, 0, 0.72, 0, 0, 0, 0.72, 0, 0, 0)
 
-[node name="AgentDebugDraw" type="Node3D" parent="."]
+[node name="AgentDebugDraw" type="Node3D" parent="." unique_id=1440956440]
 script = ExtResource("3_debug_draw")
 agent_kind = "Crawler"
 show_final_velocity = true
 show_target_ray = false
-line_thickness = 0.0
-center_brightness = 0.0
 direction_vector_length = 0.36
 velocity_vector_scale = 1.25
-force_vector_scale = 1.45
-arrow_head_size = 0.018
 label_height = 0.34
-label_font_size = 14
+
+[node name="AgentAudioEmitter" parent="." unique_id=1741047491 instance=ExtResource("4_audio")]
+agent_kind = "Crawler"
+movement_loop_stream = ExtResource("5_wrh4f")
+flee_stream = ExtResource("6_qyfpm")
+movement_volume_db = -21.0
+idle_volume_db = -33.0
+flee_volume_db = -17.0

@@ -7,22 +7,22 @@ const IdleCadenceHelper := preload("res://scripts/agents/IdleCadence.gd")
 const FleeMemoryHelper := preload("res://scripts/agents/FleeMemory.gd")
 
 @export_group("Crawler Wander")
-@export_range(0.0, 2.0, 0.01) var wander_strength: float = 0.92
-@export_range(0.01, 3.0, 0.01) var wander_frequency: float = 0.12
-@export_range(0.01, 10.0, 0.01) var wander_smoothing: float = 0.9
-@export_range(0.0, 1.0, 0.01) var vertical_wander_amount: float = 0.22
-@export_range(0.1, 5.0, 0.01) var vertical_wander_frequency_scale: float = 1.85
-@export_range(0.0, 1.0, 0.01) var lateral_wander_amount: float = 0.18
-@export_range(0.0, 0.95, 0.01) var wander_forward_bias: float = 0.72
-@export_range(1.0, 180.0, 1.0) var wander_turn_degrees_per_second: float = 24.0
+@export_range(0.0, 2.0, 0.01) var wander_strength: float = 0.98
+@export_range(0.05, 12.0, 0.01) var course_duration_min: float = 2.8
+@export_range(0.05, 12.0, 0.01) var course_duration_max: float = 5.8
+@export_range(0.01, 10.0, 0.01) var wander_smoothing: float = 1.55
+@export_range(0.0, 1.0, 0.01) var vertical_wander_amount: float = 0.28
+@export_range(0.0, 1.0, 0.01) var lateral_wander_amount: float = 0.55
+@export_range(0.0, 0.95, 0.01) var wander_forward_bias: float = 0.45
+@export_range(1.0, 180.0, 1.0) var wander_turn_degrees_per_second: float = 52.0
 
 @export_group("Idle Cadence")
 @export var idle_cadence_enabled: bool = true
-@export_range(0.0, 1.0, 0.01) var idle_probability: float = 0.26
-@export_range(0.05, 8.0, 0.01) var idle_duration_min: float = 0.8
-@export_range(0.05, 8.0, 0.01) var idle_duration_max: float = 2.2
-@export_range(0.05, 12.0, 0.01) var move_duration_min: float = 1.6
-@export_range(0.05, 12.0, 0.01) var move_duration_max: float = 3.8
+@export_range(0.0, 1.0, 0.01) var idle_probability: float = 0.14
+@export_range(0.05, 8.0, 0.01) var idle_duration_min: float = 0.45
+@export_range(0.05, 8.0, 0.01) var idle_duration_max: float = 1.2
+@export_range(0.05, 12.0, 0.01) var move_duration_min: float = 3.0
+@export_range(0.05, 12.0, 0.01) var move_duration_max: float = 6.5
 @export_range(0.0, 0.3, 0.01) var idle_drift_scale: float = 0.03
 
 @export_group("Home Tether")
@@ -30,6 +30,8 @@ const FleeMemoryHelper := preload("res://scripts/agents/FleeMemory.gd")
 @export_range(0.0, 4.0, 0.01) var home_tether_strength: float = 0.85
 @export var use_home_bounds: bool = false
 @export var home_bounds_size: Vector3 = Vector3.ZERO
+@export_range(0.1, 0.95, 0.01) var home_return_inner_ratio: float = 0.62
+@export_range(1.0, 180.0, 1.0) var home_return_turn_degrees_per_second: float = 82.0
 
 @export_group("Obstacle Avoidance")
 @export var obstacle_avoidance_enabled: bool = true
@@ -43,7 +45,7 @@ const FleeMemoryHelper := preload("res://scripts/agents/FleeMemory.gd")
 @export var player_hand_group: StringName = &"player_hand"
 @export_range(0.05, 5.0, 0.01) var player_hand_flee_memory_time: float = 1.1
 @export_range(0.1, 10.0, 0.01) var player_hand_flee_safe_radius: float = 1.0
-@export_range(0.0, 5.0, 0.01) var player_hand_flee_speed_scale: float = 1.35
+@export_range(0.0, 5.0, 0.01) var player_hand_flee_speed_scale: float = 1.75
 
 @export_group("Visual")
 @export var visual_root_path: NodePath = ^"VisualRoot"
@@ -60,6 +62,10 @@ var debug_is_idle: bool = false
 
 var _elapsed_time: float = 0.0
 var _wander_seed: float = 0.0
+var _course_direction: Vector3 = Vector3.FORWARD
+var _course_time_remaining: float = 0.0
+var _course_index: int = 0
+var _returning_home: bool = false
 var _visual_root: Node3D
 var _idle_cadence := IdleCadenceHelper.new()
 var _player_hand_flee := FleeMemoryHelper.new()
@@ -73,7 +79,8 @@ func _ready() -> void:
 	_wander_seed = _make_instance_seed()
 	_idle_cadence.configure(_wander_seed)
 	_idle_cadence.force_move(move_duration_min, move_duration_max)
-	current_wander_direction = _sample_wander_direction(0.0)
+	_begin_next_course()
+	current_wander_direction = _course_direction
 	direction = current_wander_direction
 	target_direction = current_wander_direction
 	_visual_root = get_node_or_null(visual_root_path) as Node3D
@@ -95,7 +102,8 @@ func _process(delta: float) -> void:
 		current_state = "IDLE" if debug_is_idle else "WANDER"
 		var idle_scale: float = idle_drift_scale if debug_is_idle else 1.0
 		desired_velocity_for_frame = current_wander_direction * max_speed * wander_strength * idle_scale
-		desired_velocity_for_frame = _apply_home_tether(desired_velocity_for_frame)
+		if not _returning_home:
+			desired_velocity_for_frame = _apply_home_tether(desired_velocity_for_frame)
 
 	desired_velocity_for_frame += _calculate_obstacle_avoidance(desired_velocity_for_frame)
 	apply_desired_velocity(desired_velocity_for_frame, delta)
@@ -103,19 +111,20 @@ func _process(delta: float) -> void:
 
 
 func _update_wander_direction(delta: float) -> void:
-	var sampled_direction: Vector3 = _sample_wander_direction(_elapsed_time)
+	var target_course_direction: Vector3 = _update_course_target(delta)
+	var turn_rate: float = home_return_turn_degrees_per_second if _returning_home else wander_turn_degrees_per_second
 	current_wander_direction = _smooth_direction_change(
 		current_wander_direction,
-		sampled_direction,
+		target_course_direction,
 		delta,
 		wander_smoothing,
 		wander_forward_bias,
-		wander_turn_degrees_per_second
+		turn_rate
 	)
 
 
 func _update_idle_cadence(delta: float) -> void:
-	if _is_player_hand_flee_active():
+	if _is_player_hand_flee_active() or _returning_home:
 		_idle_cadence.force_move(move_duration_min, move_duration_max)
 		debug_is_idle = false
 		return
@@ -220,12 +229,75 @@ func _update_visual() -> void:
 		_visual_root.call(&"set_agent_state", current_state)
 
 
-func _sample_wander_direction(time: float) -> Vector3:
-	var phase: float = time * TAU * wander_frequency + _wander_seed
+func _update_course_target(delta: float) -> Vector3:
+	if _is_outside_home_area():
+		_returning_home = true
+	elif _returning_home and _is_securely_inside_home_area():
+		_returning_home = false
+		_begin_next_course()
+
+	if _returning_home:
+		return _home_return_direction()
+
+	_course_time_remaining -= delta
+	if _course_time_remaining <= 0.0:
+		_begin_next_course()
+
+	return _course_direction
+
+
+func _begin_next_course() -> void:
+	_course_index += 1
+	_course_direction = _sample_course_direction()
+	_course_time_remaining = _sample_course_duration()
+
+
+func _sample_course_direction() -> Vector3:
+	var phase: float = _wander_seed + float(_course_index) * 2.399
 	var forward: Vector3 = _safe_direction(current_wander_direction, direction)
 	var side: Vector3 = _side_axis_for(forward)
-	var lateral: float = sin(phase * 0.66 + 0.4) * lateral_wander_amount
-	lateral += sin(phase * 0.27 + 1.7) * lateral_wander_amount * 0.28
-	var vertical: float = sin(phase * vertical_wander_frequency_scale + 1.8) * vertical_wander_amount
+	var lateral: float = sin(phase) * lateral_wander_amount
+	lateral += sin(phase * 0.37 + 1.7) * lateral_wander_amount * 0.35
+	var vertical: float = sin(phase * 0.83 + 1.8) * vertical_wander_amount
 	var sample: Vector3 = forward + side * lateral + Vector3.UP * vertical
 	return _safe_direction(sample, forward)
+
+
+func _sample_course_duration() -> float:
+	var min_duration: float = minf(course_duration_min, course_duration_max)
+	var max_duration: float = maxf(course_duration_min, course_duration_max)
+	var t: float = (sin(_wander_seed * 3.17 + float(_course_index) * 1.41) + 1.0) * 0.5
+	return lerpf(min_duration, max_duration, t)
+
+
+func _is_outside_home_area() -> bool:
+	return SteeringHelper.is_outside_home_area(
+		global_position,
+		home_position,
+		home_radius,
+		use_home_bounds,
+		home_bounds_size
+	)
+
+
+func _is_securely_inside_home_area() -> bool:
+	return SteeringHelper.is_inside_home_area(
+		global_position,
+		home_position,
+		home_radius,
+		use_home_bounds,
+		home_bounds_size,
+		home_return_inner_ratio
+	)
+
+
+func _home_return_direction() -> Vector3:
+	return SteeringHelper.home_return_direction(
+		global_position,
+		home_position,
+		-current_wander_direction,
+		home_radius,
+		use_home_bounds,
+		home_bounds_size,
+		home_return_inner_ratio
+	)
