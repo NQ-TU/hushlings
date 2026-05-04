@@ -146,6 +146,9 @@ const HushlingVisualBoldScene := preload("res://scenes/visuals/HushlingVisual_Bo
 @export_range(0.0, 4.0, 0.01) var home_tether_strength: float = 0.72
 @export var use_home_bounds: bool = false
 @export var home_bounds_size: Vector3 = Vector3.ZERO
+@export_range(0.1, 0.95, 0.01) var home_return_inner_ratio: float = 0.68
+@export_range(0.05, 1.0, 0.01) var home_return_speed_scale: float = 0.5
+@export_range(1.0, 180.0, 1.0) var home_return_turn_degrees_per_second: float = 58.0
 
 @export_group("Social Boids")
 @export var social_forces_enabled: bool = true
@@ -216,6 +219,7 @@ var _speed_variation: float = 1.0
 var _wander_variation: float = 1.0
 var _cohesion_variation: float = 1.0
 var _alignment_variation: float = 1.0
+var _returning_home: bool = false
 var _idle_cadence := IdleCadenceHelper.new()
 var _player_hand_flee := FleeMemoryHelper.new()
 
@@ -241,6 +245,7 @@ func _process(delta: float) -> void:
 	_update_group_flee_memory(delta)
 	_update_player_hand_flee_memory(delta)
 	_update_startled_timer(delta)
+	_update_home_return_state()
 	_update_wander_direction(delta)
 	_refresh_neighbour_count()
 	_update_perception_targets()
@@ -326,19 +331,22 @@ func _apply_debug_visibility() -> void:
 
 
 func _update_wander_direction(delta: float) -> void:
-	var sampled_direction: Vector3 = _sample_wander_direction(_elapsed_time)
+	var sampled_direction: Vector3 = _home_return_direction() if _is_home_return_active() \
+			else _sample_wander_direction(_elapsed_time)
+	var turn_rate: float = home_return_turn_degrees_per_second if _is_home_return_active() \
+			else wander_turn_degrees_per_second
 	current_wander_direction = _smooth_direction_change(
 		current_wander_direction,
 		sampled_direction,
 		delta,
 		wander_smoothing,
 		wander_forward_bias,
-		wander_turn_degrees_per_second
+		turn_rate
 	)
 
 
 func _update_idle_cadence(delta: float) -> void:
-	if not _can_apply_idle_cadence():
+	if _is_home_return_active() or not _can_apply_idle_cadence():
 		_idle_cadence.force_move(move_duration_min, move_duration_max)
 		debug_is_idle = false
 		return
@@ -361,6 +369,10 @@ func _can_apply_idle_cadence() -> bool:
 func _calculate_desired_velocity() -> Vector3:
 	_set_debug_target(null)
 	_update_current_state_label()
+	if _is_home_return_active():
+		current_state = "RETURN"
+		return _calculate_home_return_velocity()
+
 	return _calculate_autonomous_desired_velocity()
 
 
@@ -395,6 +407,10 @@ func _calculate_autonomous_desired_velocity() -> Vector3:
 func _calculate_wander_velocity() -> Vector3:
 	var idle_scale: float = idle_drift_scale if debug_is_idle else 1.0
 	return current_wander_direction * max_speed * wander_strength * _wander_variation * idle_scale
+
+
+func _calculate_home_return_velocity() -> Vector3:
+	return _home_return_direction() * max_speed * home_return_speed_scale * _speed_variation
 
 
 func _calculate_regroup_velocity() -> Vector3:
@@ -471,6 +487,52 @@ func _get_flee_breakup_direction(flee_direction: Vector3) -> Vector3:
 	return _safe_direction(Vector3.RIGHT.cross(flee_direction), Vector3.RIGHT)
 
 
+func _update_home_return_state() -> void:
+	if _is_outside_home_area():
+		_returning_home = true
+	elif _returning_home and _is_securely_inside_home_area():
+		_returning_home = false
+
+
+func _is_home_return_active() -> bool:
+	return _returning_home \
+			and _autonomous_state != HushlingStateMachine.FLEE \
+			and _autonomous_state != HushlingStateMachine.STARTLED
+
+
+func _home_return_direction() -> Vector3:
+	return SteeringHelper.home_return_direction(
+		global_position,
+		home_position,
+		-current_wander_direction,
+		home_radius,
+		use_home_bounds,
+		home_bounds_size,
+		home_return_inner_ratio
+	)
+
+
+func _is_outside_home_area() -> bool:
+	return SteeringHelper.is_outside_home_area(
+		global_position,
+		home_position,
+		home_radius,
+		use_home_bounds,
+		home_bounds_size
+	)
+
+
+func _is_securely_inside_home_area() -> bool:
+	return SteeringHelper.is_inside_home_area(
+		global_position,
+		home_position,
+		home_radius,
+		use_home_bounds,
+		home_bounds_size,
+		home_return_inner_ratio
+	)
+
+
 func _apply_home_tether(input_desired_velocity: Vector3) -> Vector3:
 	if not _should_apply_home_tether():
 		return input_desired_velocity
@@ -497,8 +559,7 @@ func _apply_home_tether(input_desired_velocity: Vector3) -> Vector3:
 
 func _should_apply_home_tether() -> bool:
 	return _autonomous_state != HushlingStateMachine.FLEE \
-			and _autonomous_state != HushlingStateMachine.STARTLED \
-			and _autonomous_state != HushlingStateMachine.OBSERVE
+			and _autonomous_state != HushlingStateMachine.STARTLED
 
 
 func _calculate_social_forces() -> Vector3:
@@ -1281,6 +1342,9 @@ func _has_perception_line_of_sight(observer: Node3D, target: Node3D) -> bool:
 func _get_active_speed_limit() -> float:
 	if _is_flee_state_active():
 		return max_speed * flee_speed_scale
+
+	if _is_home_return_active():
+		return max_speed * home_return_speed_scale * _speed_variation
 
 	if _autonomous_state == HushlingStateMachine.FOLLOW:
 		return max_speed * follow_speed_scale * _speed_variation
