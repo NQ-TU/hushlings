@@ -2,6 +2,7 @@ extends "res://scripts/agents/AgentMotor3D.gd"
 class_name HushlingAgent
 
 const PerceptionHelper := preload("res://scripts/perception/AgentPerception.gd")
+const BoidsHelper := preload("res://scripts/steering/Boids.gd")
 
 enum SteeringMode {
 	AUTO,
@@ -35,6 +36,8 @@ enum BehaviourState {
 @export var threat_target_path: NodePath
 @export_range(0.1, 10.0, 0.01) var awareness_radius: float = 2.0
 @export_range(0.1, 10.0, 0.01) var observe_distance: float = 0.65
+@export_range(0.05, 10.0, 0.01) var interest_flee_radius: float = 0.48
+@export_range(0.0, 5.0, 0.01) var interest_flee_clearance: float = 0.2
 @export_range(0.05, 10.0, 0.01) var flee_radius: float = 0.7
 @export_range(0.1, 10.0, 0.01) var flee_safe_radius: float = 1.35
 @export_range(0.0, 5.0, 0.01) var observe_speed_scale: float = 0.75
@@ -50,9 +53,17 @@ enum BehaviourState {
 @export_range(0.1, 10.0, 0.01) var home_radius: float = 1.25
 @export_range(0.0, 4.0, 0.01) var home_tether_strength: float = 0.72
 
+@export_group("Social Separation")
+@export var separation_enabled: bool = true
+@export var neighbour_group: StringName = &"hushling"
+@export_range(0.01, 3.0, 0.01) var separation_radius: float = 0.38
+@export_range(0.0, 5.0, 0.01) var separation_weight: float = 0.85
+@export_range(0.0, 3.0, 0.01) var separation_prediction_time: float = 0.7
+
 var home_position: Vector3 = Vector3.ZERO
 var current_wander_direction: Vector3 = Vector3.FORWARD
 var current_state: String = "WANDER"
+var separation_force: Vector3 = Vector3.ZERO
 var debug_has_target: bool = false
 var debug_target_position: Vector3 = Vector3.ZERO
 var debug_target_name: String = ""
@@ -66,13 +77,16 @@ var _arrive_target: Node3D
 var _flee_threat: Node3D
 var _interest_target: Node3D
 var _threat_target: Node3D
+var _autonomous_flee_target: Node3D
 var _autonomous_state: BehaviourState = BehaviourState.WANDER
+var _separation_fallback_direction: Vector3 = Vector3.RIGHT
 
 
 func _ready() -> void:
 	home_position = global_position
 	_wander_seed = _seed_from_name()
 	current_wander_direction = _sample_wander_direction(0.0)
+	_separation_fallback_direction = _sample_wander_direction(0.37)
 	direction = current_wander_direction
 	target_direction = current_wander_direction
 	_resolve_target_nodes()
@@ -87,6 +101,7 @@ func _process(delta: float) -> void:
 
 	var desired: Vector3 = _calculate_desired_velocity()
 	desired = _apply_home_tether(desired)
+	desired += _calculate_separation_force()
 	apply_desired_velocity(desired, delta)
 
 
@@ -153,10 +168,10 @@ func _calculate_desired_velocity() -> Vector3:
 func _calculate_autonomous_desired_velocity() -> Vector3:
 	match _autonomous_state:
 		BehaviourState.FLEE:
-			var threat: Node3D = _threat_target if _threat_target else _flee_threat
-			if threat:
-				_set_debug_target(threat)
-				return SteeringHelper.flee(global_position, threat.global_position, max_speed * flee_speed_scale)
+			var flee_target: Node3D = _get_autonomous_flee_target()
+			if flee_target:
+				_set_debug_target(flee_target)
+				return SteeringHelper.flee(global_position, flee_target.global_position, max_speed * flee_speed_scale)
 		BehaviourState.OBSERVE:
 			if _interest_target:
 				_set_debug_target(_interest_target)
@@ -188,11 +203,7 @@ func _calculate_observe_velocity(target_position: Vector3) -> Vector3:
 
 
 func _apply_home_tether(input_desired_velocity: Vector3) -> Vector3:
-	var uses_home_tether: bool = steering_mode == SteeringMode.WANDER \
-			or steering_mode == SteeringMode.AUTO \
-			or apply_home_tether_in_test_modes
-
-	if not uses_home_tether:
+	if not _should_apply_home_tether():
 		return input_desired_velocity
 
 	var distance_from_home: float = global_position.distance_to(home_position)
@@ -214,6 +225,32 @@ func _apply_home_tether(input_desired_velocity: Vector3) -> Vector3:
 	return input_desired_velocity + home_desired_velocity * tether_blend * home_tether_strength
 
 
+func _should_apply_home_tether() -> bool:
+	if steering_mode == SteeringMode.AUTO:
+		return _autonomous_state != BehaviourState.FLEE
+
+	if steering_mode == SteeringMode.WANDER:
+		return true
+
+	return apply_home_tether_in_test_modes
+
+
+func _calculate_separation_force() -> Vector3:
+	if not separation_enabled or not is_inside_tree():
+		separation_force = Vector3.ZERO
+		return separation_force
+
+	separation_force = BoidsHelper.separation(
+		self,
+		get_tree().get_nodes_in_group(neighbour_group),
+		separation_radius,
+		max_speed,
+		_separation_fallback_direction,
+		separation_prediction_time
+	) * separation_weight
+	return separation_force
+
+
 func _update_autonomous_state() -> void:
 	debug_interest_distance = _distance_to_or_negative(_interest_target)
 	debug_threat_distance = _distance_to_or_negative(_threat_target)
@@ -222,12 +259,22 @@ func _update_autonomous_state() -> void:
 		return
 
 	if _threat_target and debug_threat_distance <= flee_radius:
+		_autonomous_flee_target = _threat_target
+		_autonomous_state = BehaviourState.FLEE
+		return
+
+	if _interest_target and debug_interest_distance <= interest_flee_radius:
+		_autonomous_flee_target = _interest_target
 		_autonomous_state = BehaviourState.FLEE
 		return
 
 	if _autonomous_state == BehaviourState.FLEE:
-		if _threat_target and debug_threat_distance < flee_safe_radius:
+		var flee_target: Node3D = _get_autonomous_flee_target()
+		var flee_target_distance: float = _distance_to_or_negative(flee_target)
+		var safe_distance: float = _get_flee_safe_distance(flee_target)
+		if flee_target and flee_target_distance < safe_distance:
 			return
+		_autonomous_flee_target = null
 		_autonomous_state = BehaviourState.WANDER
 
 	if _interest_target and debug_interest_distance <= awareness_radius:
@@ -309,6 +356,23 @@ func _set_debug_target(target: Node3D) -> void:
 
 func _distance_to_or_negative(target: Node3D) -> float:
 	return PerceptionHelper.distance_to_or_negative(self, target)
+
+
+func _get_autonomous_flee_target() -> Node3D:
+	if is_instance_valid(_autonomous_flee_target):
+		return _autonomous_flee_target
+
+	if _threat_target:
+		return _threat_target
+
+	return _flee_threat
+
+
+func _get_flee_safe_distance(flee_target: Node3D) -> float:
+	if flee_target and flee_target.is_in_group(interest_group):
+		return max(awareness_radius, observe_distance, interest_flee_radius) + interest_flee_clearance
+
+	return flee_safe_radius
 
 
 func _sample_wander_direction(time: float) -> Vector3:

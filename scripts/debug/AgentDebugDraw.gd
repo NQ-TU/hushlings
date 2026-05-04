@@ -4,38 +4,45 @@ class_name AgentDebugDraw
 @export_group("Debug")
 @export var debug_enabled: bool = true
 @export var target_path: NodePath
+@export var allow_keyboard_toggle: bool = true
 @export var toggle_key: Key = KEY_G
 
 @export_group("Display")
-@export var show_home_volume: bool = true
+@export var show_home_volume: bool = false
+@export var show_separation_radius: bool = true
 @export var show_velocity: bool = true
 @export var show_desired_velocity: bool = true
-@export var show_steering_force: bool = true
-@export var show_final_velocity: bool = true
-@export var show_wander_direction: bool = true
+@export var show_steering_force: bool = false
+@export var show_final_velocity: bool = false
+@export var show_separation_force: bool = true
+@export var show_wander_direction: bool = false
 @export var show_target_ray: bool = true
 @export var show_state_label: bool = true
 @export var show_2d_overlay: bool = true
-@export_range(0.001, 0.2, 0.001) var line_thickness: float = 0.025
-@export_range(0.0, 1.0, 0.01) var center_brightness: float = 0.7
-@export_range(0.01, 10.0, 0.01) var velocity_vector_scale: float = 1.0
-@export_range(0.01, 10.0, 0.01) var force_vector_scale: float = 2.2
-@export_range(0.01, 1.0, 0.01) var arrow_head_size: float = 0.08
-@export_range(0.0, 1.0, 0.01) var vector_vertical_offset: float = 0.28
+@export var compact_2d_overlay: bool = true
+@export_range(0.001, 0.2, 0.001) var line_thickness: float = 0.006
+@export_range(0.0, 1.0, 0.01) var center_brightness: float = 0.25
+@export_range(0.01, 10.0, 0.01) var velocity_vector_scale: float = 0.82
+@export_range(0.01, 10.0, 0.01) var force_vector_scale: float = 1.25
+@export_range(0.01, 1.0, 0.01) var arrow_head_size: float = 0.045
+@export_range(0.0, 1.0, 0.01) var vector_vertical_offset: float = 0.22
 @export_range(0.1, 3.0, 0.01) var label_height: float = 0.62
+@export_range(8, 48, 1) var label_font_size: int = 18
 @export var draw_without_depth_test: bool = false
 @export var fallback_state_name: String = "STEERING"
 
 @export_group("Colours")
-@export var home_volume_color: Color = Color(0.22, 0.75, 1.0, 0.34)
-@export var home_line_color: Color = Color(0.35, 0.65, 0.9, 0.55)
-@export var wander_direction_color: Color = Color(0.15, 0.95, 0.95, 1.0)
-@export var velocity_color: Color = Color(0.2, 0.45, 1.0, 1.0)
-@export var desired_velocity_color: Color = Color(0.15, 0.9, 0.25, 1.0)
-@export var steering_force_color: Color = Color(1.0, 0.85, 0.1, 1.0)
-@export var final_velocity_color: Color = Color(0.75, 0.25, 1.0, 1.0)
-@export var target_ray_color: Color = Color(1.0, 1.0, 1.0, 0.9)
-@export var label_color: Color = Color(0.85, 0.96, 1.0, 1.0)
+@export var home_volume_color: Color = Color(0.22, 0.75, 1.0, 0.08)
+@export var home_line_color: Color = Color(0.35, 0.65, 0.9, 0.22)
+@export var separation_radius_color: Color = Color(1.0, 0.55, 0.12, 0.12)
+@export var separation_force_color: Color = Color(1.0, 0.55, 0.08, 0.82)
+@export var wander_direction_color: Color = Color(0.15, 0.95, 0.95, 0.55)
+@export var velocity_color: Color = Color(0.2, 0.45, 1.0, 0.78)
+@export var desired_velocity_color: Color = Color(0.15, 0.9, 0.25, 0.78)
+@export var steering_force_color: Color = Color(1.0, 0.85, 0.1, 0.72)
+@export var final_velocity_color: Color = Color(0.75, 0.25, 1.0, 0.7)
+@export var target_ray_color: Color = Color(1.0, 1.0, 1.0, 0.45)
+@export var label_color: Color = Color(0.85, 0.96, 1.0, 0.78)
 
 var _target: Node3D
 var _debug_draw_3d: Object
@@ -48,6 +55,9 @@ func _ready() -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
+	if not allow_keyboard_toggle:
+		return
+
 	if event is InputEventKey and event.pressed and not event.echo and event.keycode == toggle_key:
 		debug_enabled = not debug_enabled
 
@@ -103,6 +113,11 @@ func _draw_debug() -> void:
 		_debug_draw_3d.call("draw_sphere", home_position, home_radius, home_volume_color)
 		_debug_draw_3d.call("draw_line", home_position, agent_position, home_line_color)
 
+	if show_separation_radius:
+		var separation_radius: float = _read_float_property(&"separation_radius", 0.0)
+		if separation_radius > 0.0:
+			_debug_draw_3d.call("draw_sphere", agent_position, separation_radius, separation_radius_color)
+
 	if show_wander_direction:
 		_draw_arrow(
 			vector_origin,
@@ -138,6 +153,13 @@ func _draw_debug() -> void:
 			final_velocity_color
 		)
 
+	if show_separation_force:
+		_draw_arrow(
+			vector_origin,
+			_read_vector_property(&"separation_force", Vector3.ZERO) * force_vector_scale,
+			separation_force_color
+		)
+
 	if show_target_ray and _read_bool_property(&"debug_has_target", false):
 		var target_position: Vector3 = _read_vector_property(&"debug_target_position", agent_position)
 		_debug_draw_3d.call("draw_line", agent_position, target_position, target_ray_color)
@@ -148,7 +170,7 @@ func _draw_debug() -> void:
 			"draw_text",
 			agent_position + Vector3.UP * label_height,
 			_get_agent_label_text(),
-			24,
+			label_font_size,
 			label_color,
 			0.0
 		)
@@ -172,8 +194,26 @@ func _update_overlay() -> void:
 	var velocity: Vector3 = _read_vector_property(&"velocity", Vector3.ZERO)
 	var desired_velocity: Vector3 = _read_vector_property(&"desired_velocity", Vector3.ZERO)
 	var steering_force: Vector3 = _read_vector_property(&"steering_force", Vector3.ZERO)
+	var separation_force: Vector3 = _read_vector_property(&"separation_force", Vector3.ZERO)
+
+	if compact_2d_overlay:
+		_debug_draw_2d.call("set_text", "Hushlings/debug", "G debug | 0 AUTO 1 WANDER 2 SEEK 3 ARRIVE 4 FLEE")
+		_debug_draw_2d.call(
+			"set_text",
+			"Agent/status",
+			"%s | speed %.2f | interest %s | threat %s | sep %s" % [
+				_read_string_property(&"current_state", fallback_state_name),
+				velocity.length(),
+				_format_distance(_read_float_property(&"debug_interest_distance", -1.0)),
+				_format_distance(_read_float_property(&"debug_threat_distance", -1.0)),
+				_format_vector(separation_force)
+			]
+		)
+		_clear_verbose_overlay()
+		return
 
 	_debug_draw_2d.call("set_text", "Hushlings/debug", "0 AUTO  1 WANDER  2 SEEK  3 ARRIVE  4 FLEE  |  G toggles debug")
+	_debug_draw_2d.call("set_text", "Agent/status", "")
 	_debug_draw_2d.call("set_text", "Agent/state", _read_string_property(&"current_state", fallback_state_name))
 	_debug_draw_2d.call("set_text", "Agent/target", _read_string_property(&"debug_target_name", ""))
 	_debug_draw_2d.call("set_text", "Agent/interest_distance", _format_distance(_read_float_property(&"debug_interest_distance", -1.0)))
@@ -181,6 +221,7 @@ func _update_overlay() -> void:
 	_debug_draw_2d.call("set_text", "Agent/speed", "%.3f" % velocity.length())
 	_debug_draw_2d.call("set_text", "Agent/desired_velocity", _format_vector(desired_velocity))
 	_debug_draw_2d.call("set_text", "Agent/steering_force", _format_vector(steering_force))
+	_debug_draw_2d.call("set_text", "Agent/separation_force", _format_vector(separation_force))
 
 
 func _clear_overlay() -> void:
@@ -188,6 +229,14 @@ func _clear_overlay() -> void:
 		return
 
 	_debug_draw_2d.call("set_text", "Hushlings/debug", "")
+	_debug_draw_2d.call("set_text", "Agent/status", "")
+	_clear_verbose_overlay()
+
+
+func _clear_verbose_overlay() -> void:
+	if _debug_draw_2d == null:
+		return
+
 	_debug_draw_2d.call("set_text", "Agent/state", "")
 	_debug_draw_2d.call("set_text", "Agent/target", "")
 	_debug_draw_2d.call("set_text", "Agent/interest_distance", "")
@@ -195,6 +244,7 @@ func _clear_overlay() -> void:
 	_debug_draw_2d.call("set_text", "Agent/speed", "")
 	_debug_draw_2d.call("set_text", "Agent/desired_velocity", "")
 	_debug_draw_2d.call("set_text", "Agent/steering_force", "")
+	_debug_draw_2d.call("set_text", "Agent/separation_force", "")
 
 
 func _get_agent_label_text() -> String:
