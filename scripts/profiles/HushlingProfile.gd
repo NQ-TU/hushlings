@@ -97,7 +97,11 @@ class_name HushlingProfile
 @export_range(0.0, 2.0, 0.01) var wander_strength: float = 0.86
 @export_range(0.01, 3.0, 0.01) var wander_frequency: float = 0.18
 @export_range(0.01, 10.0, 0.01) var wander_smoothing: float = 1.25
-@export_range(0.0, 1.0, 0.01) var vertical_wander_amount: float = 0.24
+@export_range(0.0, 1.0, 0.01) var vertical_wander_amount: float = 0.34
+@export_range(0.1, 5.0, 0.01) var vertical_wander_frequency_scale: float = 2.15
+@export_range(0.0, 1.0, 0.01) var lateral_wander_amount: float = 0.28
+@export_range(0.0, 0.95, 0.01) var wander_forward_bias: float = 0.62
+@export_range(1.0, 180.0, 1.0) var wander_turn_degrees_per_second: float = 34.0
 
 @export_group("Idle Cadence")
 @export var idle_cadence_enabled: bool = true
