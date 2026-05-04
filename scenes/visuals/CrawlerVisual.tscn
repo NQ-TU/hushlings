@@ -30,16 +30,22 @@ drift_frequency = 0.34
 body_pulse_amount = 0.035
 pulse_frequency = 0.78
 vertical_wave_amount = 0.065
-body_lag_amount = 0.035
-spine_chain_follow_speed = 4.6
-head_turn_response = 2.45
+body_lag_amount = 0.075
+spine_chain_follow_speed = 3.0
+head_turn_response = 3.2
 vertical_turn_influence = 0.65
-body_turn_follow_speed = 0.82
-body_turn_lag_amount = 0.72
+body_turn_follow_speed = 0.55
+body_turn_lag_amount = 0.95
+body_heading_follow_speed = 0.55
 body_turn_distribution = 0.58
 movement_lean_amount = 8.0
 startled_curl_amount = 0.28
 velocity_response = 1.55
+head_turn_degrees_per_second = 95.0
+max_body_step_turn_degrees = 13.0
+max_body_total_turn_degrees = 58.0
+max_segment_yaw_degrees = 18.0
+max_segment_pitch_degrees = 12.0
 appendage_sweep_strength = 0.9
 ribbon_color = Color(0.055, 0.065, 0.09, 1)
 underside_color = Color(0.085, 0.045, 0.075, 1)
@@ -55,5 +61,3 @@ sensor_emission_strength = 1.35
 [node name="SensorRoot" type="Node3D" parent="PoseRoot"]
 
 [node name="AppendageRoot" type="Node3D" parent="PoseRoot"]
-
-[node name="AccentRoot" type="Node3D" parent="PoseRoot"]

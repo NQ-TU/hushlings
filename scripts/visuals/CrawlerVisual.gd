@@ -100,25 +100,26 @@ const VALID_STATES := ["IDLE", "WANDER", "OBSERVE", "FLEE", "STARTLED", "CONFIDE
 @export_range(0.0, 0.16, 0.001) var body_pulse_amount: float = 0.035
 @export_range(0.05, 5.0, 0.01) var pulse_frequency: float = 0.78
 @export_range(0.0, 0.16, 0.001) var vertical_wave_amount: float = 0.065
-@export_range(0.0, 0.25, 0.001) var body_lag_amount: float = 0.035
+@export_range(0.0, 0.25, 0.001) var body_lag_amount: float = 0.075
 @export_range(0.5, 18.0, 0.1) var body_smoothing_speed: float = 3.8
-@export_range(0.5, 18.0, 0.1) var spine_chain_follow_speed: float = 4.6
-@export_range(0.5, 12.0, 0.1) var head_turn_response: float = 2.45
+@export_range(0.5, 18.0, 0.1) var spine_chain_follow_speed: float = 3.0
+@export_range(0.5, 12.0, 0.1) var head_turn_response: float = 3.2
 @export_range(0.0, 1.0, 0.01) var vertical_turn_influence: float = 0.65
 @export_range(0.0, 0.25, 0.001) var minimum_facing_speed: float = 0.025
-@export_range(0.1, 12.0, 0.1) var body_turn_follow_speed: float = 0.82
-@export_range(0.0, 1.2, 0.001) var body_turn_lag_amount: float = 0.72
+@export_range(0.1, 12.0, 0.1) var body_turn_follow_speed: float = 0.55
+@export_range(0.0, 1.2, 0.001) var body_turn_lag_amount: float = 0.95
+@export_range(0.1, 8.0, 0.1) var body_heading_follow_speed: float = 0.55
 @export_range(0.2, 2.0, 0.01) var body_turn_distribution: float = 0.58
 @export_range(0.0, 24.0, 0.1) var movement_lean_amount: float = 8.0
 @export_range(0.0, 0.4, 0.001) var startled_curl_amount: float = 0.28
 @export_range(0.1, 12.0, 0.1) var velocity_response: float = 1.55
 
 @export_group("Turn Limits")
-@export_range(15.0, 240.0, 1.0) var head_turn_degrees_per_second: float = 70.0
-@export_range(4.0, 45.0, 0.5) var max_body_step_turn_degrees: float = 10.0
-@export_range(8.0, 90.0, 0.5) var max_body_total_turn_degrees: float = 42.0
-@export_range(4.0, 35.0, 0.5) var max_segment_yaw_degrees: float = 14.0
-@export_range(3.0, 30.0, 0.5) var max_segment_pitch_degrees: float = 10.0
+@export_range(15.0, 240.0, 1.0) var head_turn_degrees_per_second: float = 95.0
+@export_range(4.0, 45.0, 0.5) var max_body_step_turn_degrees: float = 13.0
+@export_range(8.0, 90.0, 0.5) var max_body_total_turn_degrees: float = 58.0
+@export_range(4.0, 35.0, 0.5) var max_segment_yaw_degrees: float = 18.0
+@export_range(3.0, 30.0, 0.5) var max_segment_pitch_degrees: float = 12.0
 @export_range(3.0, 35.0, 0.5) var max_bank_angle_degrees: float = 16.0
 
 @export_group("Appendage Motion")
@@ -188,7 +189,6 @@ var _pose_root: Node3D
 var _spine_root: Node3D
 var _sensor_root: Node3D
 var _appendage_root: Node3D
-var _accent_root: Node3D
 var _spine_segments: Array[Node3D] = []
 var _spine_visuals: Array[MeshInstance3D] = []
 var _appendages: Array[Node3D] = []
@@ -199,6 +199,7 @@ var _smoothed_segment_rotations: Array[Vector3] = []
 var _smoothed_segment_scales: Array[Vector3] = []
 var _smoothed_visual_scales: Array[Vector3] = []
 var _chain_world_positions: Array[Vector3] = []
+var _chain_lead_direction: Vector3 = Vector3.BACK
 
 var _ribbon_material: StandardMaterial3D
 var _underside_material: StandardMaterial3D
@@ -272,12 +273,10 @@ func build_visual() -> void:
 	_spine_root = _ensure_root(_pose_root, "SpineRoot")
 	_sensor_root = _ensure_root(_pose_root, "SensorRoot")
 	_appendage_root = _ensure_root(_pose_root, "AppendageRoot")
-	_accent_root = _ensure_root(_pose_root, "AccentRoot")
 
 	_clear_generated(_spine_root)
 	_clear_generated(_sensor_root)
 	_clear_generated(_appendage_root)
-	_clear_generated(_accent_root)
 	_spine_segments.clear()
 	_spine_visuals.clear()
 	_appendages.clear()
@@ -285,7 +284,6 @@ func build_visual() -> void:
 	_create_materials()
 	_build_spine()
 	_build_appendages()
-	_build_free_sensors()
 	_cache_segment_defaults()
 
 
@@ -432,24 +430,6 @@ func _add_appendage(
 	_add_generated_child(parent_segment, chain)
 	chain.call(&"build_chain")
 	_appendages.append(chain)
-
-
-func _build_free_sensors() -> void:
-	var node_mesh := _sphere_mesh(7, 4)
-	for i in range(4):
-		var t: float = float(i) / 3.0
-		var sensor := MeshInstance3D.new()
-		sensor.name = "TrailingSensorNode%02d" % i
-		sensor.mesh = node_mesh
-		sensor.position = Vector3(
-			lerp(-body_width * 0.18, body_width * 0.18, t),
-			body_height * 1.55,
-			body_length * lerp(0.21, 0.86, t)
-		)
-		sensor.scale = Vector3.ONE * lerp(0.022, 0.014, t)
-		sensor.material_override = _sensor_material
-		sensor.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-		_add_generated_child(_accent_root, sensor)
 
 
 func _update_pose_motion(delta: float) -> void:
@@ -678,6 +658,9 @@ func _cache_segment_defaults() -> void:
 			_smoothed_segment_scales.append(segment.scale)
 			_chain_world_positions.append(_spine_root.to_global(segment.position))
 
+	if is_instance_valid(_spine_root):
+		_chain_lead_direction = _safe_direction(_spine_root.global_transform.basis * Vector3.BACK, Vector3.BACK)
+
 	for visual in _spine_visuals:
 		if is_instance_valid(visual):
 			_base_segment_scales.append(visual.scale)
@@ -689,7 +672,13 @@ func _update_spine_chain_positions(spacing_scale: float, delta: float) -> void:
 		return
 
 	_chain_world_positions[0] = _spine_root.to_global(_base_segment_positions[0])
-	var fallback_direction: Vector3 = (_spine_root.global_transform.basis * Vector3.BACK).normalized()
+	var target_fallback_direction: Vector3 = (_spine_root.global_transform.basis * Vector3.BACK).normalized()
+	var heading_alpha: float = 1.0 - exp(-body_heading_follow_speed * delta)
+	_chain_lead_direction = _safe_direction(
+		_chain_lead_direction.lerp(target_fallback_direction, heading_alpha),
+		target_fallback_direction
+	)
+	var fallback_direction: Vector3 = _chain_lead_direction
 	var count: int = min(_chain_world_positions.size(), _base_segment_positions.size())
 	var max_step_turn: float = deg_to_rad(max_body_step_turn_degrees)
 	var max_total_turn: float = deg_to_rad(max_body_total_turn_degrees)
@@ -699,7 +688,7 @@ func _update_spine_chain_positions(spacing_scale: float, delta: float) -> void:
 		var relaxed_total_turn: float = lerp(max_total_turn, PI, smoothstep(0.18, 1.0, t))
 		var previous_position: Vector3 = _chain_world_positions[i - 1]
 		var current_position: Vector3 = _chain_world_positions[i]
-		var segment_spacing: float = _base_segment_positions[i].distance_to(_base_segment_positions[i - 1]) * spacing_scale
+		var segment_spacing: float = _world_segment_spacing(i, spacing_scale)
 		var current_direction: Vector3 = current_position - previous_position
 
 		if current_direction.length_squared() < 0.0001:
@@ -730,6 +719,15 @@ func _update_spine_chain_positions(spacing_scale: float, delta: float) -> void:
 		constrained_direction = _limit_direction_angle(constrained_direction, lead_direction, max_step_turn)
 		constrained_direction = _limit_direction_angle(constrained_direction, fallback_direction, relaxed_total_turn)
 		_chain_world_positions[i] = previous_position + constrained_direction * segment_spacing
+
+
+func _world_segment_spacing(index: int, spacing_scale: float) -> float:
+	if index <= 0 or index >= _base_segment_positions.size():
+		return 0.001
+
+	var current_base: Vector3 = _spine_root.to_global(_base_segment_positions[index])
+	var previous_base: Vector3 = _spine_root.to_global(_base_segment_positions[index - 1])
+	return max(current_base.distance_to(previous_base) * spacing_scale, 0.001)
 
 
 func _segment_rotation_from_wave(
