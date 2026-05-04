@@ -1,6 +1,8 @@
 extends "res://scripts/agents/AgentMotor3D.gd"
 class_name CrawlerAgent
 
+const ObstacleAvoidanceHelper := preload("res://scripts/steering/ObstacleAvoidance.gd")
+
 @export_group("Crawler Wander")
 @export_range(0.0, 2.0, 0.01) var wander_strength: float = 0.76
 @export_range(0.01, 3.0, 0.01) var wander_frequency: float = 0.12
@@ -11,6 +13,13 @@ class_name CrawlerAgent
 @export_range(0.1, 10.0, 0.01) var home_radius: float = 1.05
 @export_range(0.0, 4.0, 0.01) var home_tether_strength: float = 0.85
 
+@export_group("Obstacle Avoidance")
+@export var obstacle_avoidance_enabled: bool = true
+@export_flags_3d_physics var obstacle_collision_mask: int = 1
+@export_range(0.05, 5.0, 0.01) var obstacle_feeler_length: float = 0.5
+@export_range(1.0, 85.0, 1.0) var obstacle_feeler_angle_degrees: float = 34.0
+@export_range(0.0, 5.0, 0.01) var obstacle_avoidance_weight: float = 0.72
+
 @export_group("Placeholder Visual")
 @export var visual_root_path: NodePath = ^"VisualRoot"
 @export_range(0.0, 0.2, 0.001) var crawl_wave_amount: float = 0.025
@@ -19,6 +28,10 @@ class_name CrawlerAgent
 var home_position: Vector3 = Vector3.ZERO
 var current_wander_direction: Vector3 = Vector3.FORWARD
 var current_state: String = "WANDER"
+var obstacle_avoidance_force: Vector3 = Vector3.ZERO
+var debug_obstacle_hit: bool = false
+var debug_obstacle_hit_position: Vector3 = Vector3.ZERO
+var debug_obstacle_hit_normal: Vector3 = Vector3.ZERO
 
 var _elapsed_time: float = 0.0
 var _wander_seed: float = 0.0
@@ -43,6 +56,7 @@ func _process(delta: float) -> void:
 
 	var desired_velocity_for_frame: Vector3 = current_wander_direction * max_speed * wander_strength
 	desired_velocity_for_frame = _apply_home_tether(desired_velocity_for_frame)
+	desired_velocity_for_frame += _calculate_obstacle_avoidance(desired_velocity_for_frame)
 	apply_desired_velocity(desired_velocity_for_frame, delta)
 	_update_placeholder_visual()
 
@@ -72,6 +86,30 @@ func _apply_home_tether(input_desired_velocity: Vector3) -> Vector3:
 		home_radius
 	)
 	return input_desired_velocity + home_desired_velocity * tether_blend * home_tether_strength
+
+
+func _calculate_obstacle_avoidance(input_desired_velocity: Vector3) -> Vector3:
+	obstacle_avoidance_force = Vector3.ZERO
+	debug_obstacle_hit = false
+	debug_obstacle_hit_position = Vector3.ZERO
+	debug_obstacle_hit_normal = Vector3.ZERO
+	if not obstacle_avoidance_enabled:
+		return Vector3.ZERO
+
+	var result: Dictionary = ObstacleAvoidanceHelper.calculate(
+		self,
+		input_desired_velocity,
+		obstacle_feeler_length,
+		obstacle_feeler_angle_degrees,
+		obstacle_collision_mask,
+		max_speed
+	)
+	var raw_force: Vector3 = result.get("force", Vector3.ZERO)
+	obstacle_avoidance_force = raw_force * obstacle_avoidance_weight
+	debug_obstacle_hit = bool(result.get("hit", false))
+	debug_obstacle_hit_position = result.get("hit_position", Vector3.ZERO)
+	debug_obstacle_hit_normal = result.get("hit_normal", Vector3.ZERO)
+	return obstacle_avoidance_force
 
 
 func _update_placeholder_visual() -> void:

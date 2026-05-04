@@ -46,6 +46,16 @@ ambient_light_color = Color(0.48, 0.52, 0.58, 1)
 ambient_light_energy = 0.9
 reflected_light_source = 2
 
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_obstacle"]
+albedo_color = Color(0.38, 0.36, 0.43, 1)
+roughness = 0.72
+
+[sub_resource type="BoxMesh" id="BoxMesh_obstacle"]
+size = Vector3(0.26, 0.46, 0.26)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_obstacle"]
+size = Vector3(0.26, 0.46, 0.26)
+
 [node name="BehaviourSandbox" type="Node3D" unique_id=482098564]
 
 [node name="HushlingAgent" parent="." unique_id=1845606375 instance=ExtResource("1_hushling_agent")]
@@ -53,7 +63,7 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.12, 0.34, 0.02)
 seek_target_path = NodePath("../SeekArriveTarget")
 arrive_target_path = NodePath("../SeekArriveTarget")
 flee_threat_path = NodePath("../FleeThreat")
-interest_flee_radius = 0.52
+interest_flee_radius = 0.8
 flee_radius = 0.62
 flee_safe_radius = 1.0
 
@@ -62,7 +72,7 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.12, 0.38, -0.08)
 seek_target_path = NodePath("../SeekArriveTarget")
 arrive_target_path = NodePath("../SeekArriveTarget")
 flee_threat_path = NodePath("../FleeThreat")
-interest_flee_radius = 0.52
+interest_flee_radius = 0.8
 flee_radius = 0.62
 flee_safe_radius = 1.0
 
@@ -71,7 +81,7 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.02, 0.31, 0.22)
 seek_target_path = NodePath("../SeekArriveTarget")
 arrive_target_path = NodePath("../SeekArriveTarget")
 flee_threat_path = NodePath("../FleeThreat")
-interest_flee_radius = 0.52
+interest_flee_radius = 0.8
 flee_radius = 0.62
 flee_safe_radius = 1.0
 
@@ -86,6 +96,24 @@ modulate = Color(0.58, 0.92, 0.64, 1)
 text = "CRAWLER
 interest_entity"
 font_size = 18
+
+[node name="ObstacleBlock" type="StaticBody3D" parent="." groups=["obstacle"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.44, 0.39, -0.27)
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="ObstacleBlock"]
+material_override = SubResource("StandardMaterial3D_obstacle")
+mesh = SubResource("BoxMesh_obstacle")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="ObstacleBlock"]
+shape = SubResource("BoxShape3D_obstacle")
+
+[node name="ObstacleLabel" type="Label3D" parent="ObstacleBlock"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.34, 0)
+billboard = 1
+modulate = Color(0.78, 0.76, 0.86, 1)
+text = "LOS
+OBSTACLE"
+font_size = 16
 
 [node name="SeekArriveTarget" type="MeshInstance3D" parent="." unique_id=1066932433]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.32, 0.48, -0.85)

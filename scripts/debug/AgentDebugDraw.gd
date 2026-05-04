@@ -17,6 +17,8 @@ class_name AgentDebugDraw
 @export var show_separation_force: bool = true
 @export var show_cohesion_force: bool = false
 @export var show_alignment_force: bool = false
+@export var show_obstacle_avoidance: bool = true
+@export var show_obstacle_feelers: bool = true
 @export var show_wander_direction: bool = false
 @export var show_target_ray: bool = true
 @export var show_state_label: bool = true
@@ -40,6 +42,9 @@ class_name AgentDebugDraw
 @export var separation_force_color: Color = Color(1.0, 0.55, 0.08, 0.82)
 @export var cohesion_force_color: Color = Color(0.1, 0.85, 0.9, 0.62)
 @export var alignment_force_color: Color = Color(0.35, 0.68, 1.0, 0.62)
+@export var obstacle_avoidance_color: Color = Color(1.0, 0.18, 0.75, 0.78)
+@export var obstacle_hit_color: Color = Color(1.0, 0.18, 0.28, 0.82)
+@export var obstacle_feeler_color: Color = Color(1.0, 0.18, 0.75, 0.18)
 @export var wander_direction_color: Color = Color(0.15, 0.95, 0.95, 0.55)
 @export var velocity_color: Color = Color(0.2, 0.45, 1.0, 0.78)
 @export var desired_velocity_color: Color = Color(0.15, 0.9, 0.25, 0.78)
@@ -178,6 +183,21 @@ func _draw_debug() -> void:
 			alignment_force_color
 		)
 
+	if show_obstacle_feelers:
+		_draw_obstacle_feelers(agent_position)
+
+	if show_obstacle_avoidance:
+		_draw_arrow(
+			vector_origin,
+			_read_vector_property(&"obstacle_avoidance_force", Vector3.ZERO) * force_vector_scale,
+			obstacle_avoidance_color
+		)
+		if _read_bool_property(&"debug_obstacle_hit", false):
+			var hit_position: Vector3 = _read_vector_property(&"debug_obstacle_hit_position", agent_position)
+			var hit_normal: Vector3 = _read_vector_property(&"debug_obstacle_hit_normal", Vector3.UP)
+			_debug_draw_3d.call("draw_position", Transform3D(Basis.IDENTITY, hit_position), obstacle_hit_color)
+			_debug_draw_3d.call("draw_line", hit_position, hit_position + hit_normal * 0.14, obstacle_hit_color)
+
 	if show_target_ray and _read_bool_property(&"debug_has_target", false):
 		var target_position: Vector3 = _read_vector_property(&"debug_target_position", agent_position)
 		_debug_draw_3d.call("draw_line", agent_position, target_position, target_ray_color)
@@ -201,6 +221,33 @@ func _draw_arrow(start_position: Vector3, vector: Vector3, color: Color) -> void
 	_debug_draw_3d.call("draw_arrow", start_position, start_position + vector, color, arrow_head_size)
 
 
+func _draw_obstacle_feelers(origin: Vector3) -> void:
+	var feeler_length: float = _read_float_property(&"obstacle_feeler_length", 0.0)
+	if feeler_length <= 0.0:
+		return
+
+	var forward: Vector3 = _safe_direction(
+		_read_vector_property(&"desired_velocity", Vector3.ZERO),
+		_read_vector_property(&"direction", Vector3.FORWARD)
+	)
+	var right_axis: Vector3 = forward.cross(Vector3.UP)
+	if right_axis.length_squared() <= 0.0001:
+		right_axis = Vector3.RIGHT
+	else:
+		right_axis = right_axis.normalized()
+
+	var angle: float = deg_to_rad(_read_float_property(&"obstacle_feeler_angle_degrees", 34.0))
+	var directions: Array[Vector3] = [
+		forward,
+		Quaternion(Vector3.UP, angle) * forward,
+		Quaternion(Vector3.UP, -angle) * forward,
+		Quaternion(right_axis, angle) * forward,
+		Quaternion(right_axis, -angle) * forward,
+	]
+	for direction in directions:
+		_debug_draw_3d.call("draw_line", origin, origin + direction.normalized() * feeler_length, obstacle_feeler_color)
+
+
 func _update_overlay() -> void:
 	if _debug_draw_2d == null:
 		return
@@ -218,28 +265,43 @@ func _update_overlay() -> void:
 	var neighbour_count: int = _read_int_property(&"debug_neighbour_count", 0)
 	var interest_visible: bool = _read_bool_property(&"debug_interest_visible", false)
 	var interest_sees_agent: bool = _read_bool_property(&"debug_interest_sees_agent", false)
+	var interest_los_clear: bool = _read_bool_property(&"debug_interest_los_clear", false)
+	var interest_gaze_los_clear: bool = _read_bool_property(&"debug_interest_gaze_los_clear", false)
+	var obstacle_hit: bool = _read_bool_property(&"debug_obstacle_hit", false)
+	var mind_text: String = "fear %.2f | curiosity %.2f | confidence %.2f | loneliness %.2f | support %.2f | flee %.2f" % [
+		_read_float_property(&"fear", 0.0),
+		_read_float_property(&"curiosity", 0.0),
+		_read_float_property(&"confidence", 0.0),
+		_read_float_property(&"loneliness", 0.0),
+		_read_float_property(&"debug_group_support", 0.0),
+		_read_float_property(&"debug_effective_interest_flee_radius", 0.0),
+	]
 
 	if compact_2d_overlay:
 		_debug_draw_2d.call("set_text", "Hushlings/debug", "G debug | 0 AUTO 1 WANDER 2 SEEK 3 ARRIVE 4 FLEE")
 		_debug_draw_2d.call(
 			"set_text",
 			"Agent/status",
-			"%s | speed %.2f | group %d | interest %s | visible %s | watched %s | threat %s" % [
+			"%s | speed %.2f | group %d | interest %s | visible %s | watched %s | los %s/%s | obstacle %s" % [
 				_read_string_property(&"current_state", fallback_state_name),
 				velocity.length(),
 				neighbour_count,
 				_format_distance(_read_float_property(&"debug_interest_distance", -1.0)),
 				_format_bool(interest_visible),
 				_format_bool(interest_sees_agent),
-				_format_distance(_read_float_property(&"debug_threat_distance", -1.0)),
+				_format_bool(interest_los_clear),
+				_format_bool(interest_gaze_los_clear),
+				_format_bool(obstacle_hit),
 			]
 		)
+		_debug_draw_2d.call("set_text", "Agent/mind", mind_text)
 		_clear_verbose_overlay()
 		return
 
 	_debug_draw_2d.call("set_text", "Hushlings/debug", "0 AUTO  1 WANDER  2 SEEK  3 ARRIVE  4 FLEE  |  G toggles debug")
 	_debug_draw_2d.call("set_text", "Agent/status", "")
 	_debug_draw_2d.call("set_text", "Agent/state", _read_string_property(&"current_state", fallback_state_name))
+	_debug_draw_2d.call("set_text", "Agent/mind", mind_text)
 	_debug_draw_2d.call("set_text", "Agent/target", _read_string_property(&"debug_target_name", ""))
 	_debug_draw_2d.call("set_text", "Agent/interest_distance", _format_distance(_read_float_property(&"debug_interest_distance", -1.0)))
 	_debug_draw_2d.call("set_text", "Agent/threat_distance", _format_distance(_read_float_property(&"debug_threat_distance", -1.0)))
@@ -249,8 +311,13 @@ func _update_overlay() -> void:
 	_debug_draw_2d.call("set_text", "Agent/separation_force", _format_vector(separation_force))
 	_debug_draw_2d.call("set_text", "Agent/cohesion_force", _format_vector(cohesion_force))
 	_debug_draw_2d.call("set_text", "Agent/alignment_force", _format_vector(alignment_force))
+	_debug_draw_2d.call("set_text", "Agent/regroup_force", _format_vector(_read_vector_property(&"regroup_force", Vector3.ZERO)))
+	_debug_draw_2d.call("set_text", "Agent/obstacle_avoidance_force", _format_vector(_read_vector_property(&"obstacle_avoidance_force", Vector3.ZERO)))
+	_debug_draw_2d.call("set_text", "Agent/obstacle_hit", str(obstacle_hit))
 	_debug_draw_2d.call("set_text", "Agent/interest_visible", str(interest_visible))
 	_debug_draw_2d.call("set_text", "Agent/interest_sees_agent", str(interest_sees_agent))
+	_debug_draw_2d.call("set_text", "Agent/interest_los_clear", str(interest_los_clear))
+	_debug_draw_2d.call("set_text", "Agent/interest_gaze_los_clear", str(interest_gaze_los_clear))
 
 
 func _clear_overlay() -> void:
@@ -259,6 +326,7 @@ func _clear_overlay() -> void:
 
 	_debug_draw_2d.call("set_text", "Hushlings/debug", "")
 	_debug_draw_2d.call("set_text", "Agent/status", "")
+	_debug_draw_2d.call("set_text", "Agent/mind", "")
 	_clear_verbose_overlay()
 
 
@@ -276,8 +344,13 @@ func _clear_verbose_overlay() -> void:
 	_debug_draw_2d.call("set_text", "Agent/separation_force", "")
 	_debug_draw_2d.call("set_text", "Agent/cohesion_force", "")
 	_debug_draw_2d.call("set_text", "Agent/alignment_force", "")
+	_debug_draw_2d.call("set_text", "Agent/regroup_force", "")
+	_debug_draw_2d.call("set_text", "Agent/obstacle_avoidance_force", "")
+	_debug_draw_2d.call("set_text", "Agent/obstacle_hit", "")
 	_debug_draw_2d.call("set_text", "Agent/interest_visible", "")
 	_debug_draw_2d.call("set_text", "Agent/interest_sees_agent", "")
+	_debug_draw_2d.call("set_text", "Agent/interest_los_clear", "")
+	_debug_draw_2d.call("set_text", "Agent/interest_gaze_los_clear", "")
 
 
 func _get_agent_label_text() -> String:
@@ -339,3 +412,11 @@ func _format_distance(value: float) -> String:
 
 func _format_bool(value: bool) -> String:
 	return "yes" if value else "no"
+
+
+func _safe_direction(value: Vector3, fallback: Vector3) -> Vector3:
+	if value.length_squared() <= 0.0001:
+		if fallback.length_squared() <= 0.0001:
+			return Vector3.FORWARD
+		return fallback.normalized()
+	return value.normalized()
