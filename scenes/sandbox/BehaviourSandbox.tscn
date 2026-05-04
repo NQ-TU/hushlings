@@ -2,15 +2,25 @@
 
 [ext_resource type="PackedScene" path="res://scenes/agents/HushlingAgent.tscn" id="1_hushling_agent"]
 [ext_resource type="PackedScene" path="res://scenes/agents/CrawlerAgent.tscn" id="2_crawler_agent"]
-[ext_resource type="Script" path="res://scripts/agents/PlayerInfluence.gd" id="3_player_influence"]
+[ext_resource type="Script" uid="uid://c86qd5gttov06" path="res://scripts/agents/PlayerInfluence.gd" id="3_player_influence"]
 [ext_resource type="Resource" path="res://resources/hushlings/HushlingProfile_Timid.tres" id="4_profile_timid"]
 [ext_resource type="Resource" path="res://resources/hushlings/HushlingProfile_Bold.tres" id="5_profile_bold"]
 
-[sub_resource type="SphereMesh" id="SphereMesh_marker"]
-radius = 0.085
-height = 0.17
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_player_hand"]
+albedo_color = Color(0.55, 0.68, 0.95, 1)
+roughness = 0.48
+emission_enabled = true
+emission = Color(0.18, 0.34, 0.72, 1)
+emission_energy_multiplier = 0.25
+
+[sub_resource type="SphereMesh" id="SphereMesh_player_hand"]
+radius = 0.14
+height = 0.28
 radial_segments = 16
 rings = 8
+
+[sub_resource type="SphereShape3D" id="SphereShape3D_player_hand"]
+radius = 0.18
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_flee_threat"]
 albedo_color = Color(0.88, 0.18, 0.12, 1)
@@ -18,6 +28,12 @@ roughness = 0.52
 emission_enabled = true
 emission = Color(0.66, 0.04, 0.03, 1)
 emission_energy_multiplier = 0.55
+
+[sub_resource type="SphereMesh" id="SphereMesh_marker"]
+radius = 0.085
+height = 0.17
+radial_segments = 16
+rings = 8
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_home_marker"]
 albedo_color = Color(0.22, 0.42, 0.62, 1)
@@ -42,45 +58,22 @@ ambient_light_color = Color(0.48, 0.52, 0.58, 1)
 ambient_light_energy = 0.9
 reflected_light_source = 2
 
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_obstacle"]
-albedo_color = Color(0.38, 0.36, 0.43, 1)
-roughness = 0.72
-
-[sub_resource type="BoxMesh" id="BoxMesh_obstacle"]
-size = Vector3(0.26, 0.46, 0.26)
-
-[sub_resource type="BoxShape3D" id="BoxShape3D_obstacle"]
-size = Vector3(0.26, 0.46, 0.26)
-
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_player_hand"]
-albedo_color = Color(0.55, 0.68, 0.95, 1)
-roughness = 0.48
-emission_enabled = true
-emission = Color(0.18, 0.34, 0.72, 1)
-emission_energy_multiplier = 0.25
-
-[sub_resource type="SphereMesh" id="SphereMesh_player_hand"]
-radius = 0.14
-height = 0.28
-radial_segments = 16
-rings = 8
-
-[sub_resource type="SphereShape3D" id="SphereShape3D_player_hand"]
-radius = 0.18
-
 [node name="BehaviourSandbox" type="Node3D" unique_id=482098564]
 
 [node name="HushlingAgent" parent="." unique_id=1845606375 instance=ExtResource("1_hushling_agent")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.12, 0.34, 0.02)
 profile = ExtResource("4_profile_timid")
+visual_variant = "Timid"
 
 [node name="HushlingAgentB" parent="." unique_id=555157585 instance=ExtResource("1_hushling_agent")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.12, 0.38, -0.08)
 profile = ExtResource("5_profile_bold")
+visual_variant = "Bold"
 
 [node name="HushlingAgentC" parent="." unique_id=1724075786 instance=ExtResource("1_hushling_agent")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.02, 0.31, 0.22)
 profile = ExtResource("4_profile_timid")
+visual_variant = "Timid"
 
 [node name="CrawlerAgent" parent="." unique_id=814970333 instance=ExtResource("2_crawler_agent")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.9, 0.42, -0.52)
@@ -94,36 +87,18 @@ text = "CRAWLER
 interest_entity"
 font_size = 18
 
-[node name="ObstacleBlock" type="StaticBody3D" parent="." groups=["obstacle"]]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.44, 0.39, -0.27)
-
-[node name="MeshInstance3D" type="MeshInstance3D" parent="ObstacleBlock"]
-material_override = SubResource("StandardMaterial3D_obstacle")
-mesh = SubResource("BoxMesh_obstacle")
-
-[node name="CollisionShape3D" type="CollisionShape3D" parent="ObstacleBlock"]
-shape = SubResource("BoxShape3D_obstacle")
-
-[node name="ObstacleLabel" type="Label3D" parent="ObstacleBlock"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.34, 0)
-billboard = 1
-modulate = Color(0.78, 0.76, 0.86, 1)
-text = "LOS
-OBSTACLE"
-font_size = 16
-
-[node name="PlayerHandProbe" type="Area3D" parent="." groups=["obstacle", "player", "player_hand"]]
+[node name="PlayerHandProbe" type="Area3D" parent="." unique_id=1254736275 groups=["obstacle", "player", "player_hand"]]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.54, 0.39, -0.02)
 collision_mask = 0
 
-[node name="MeshInstance3D" type="MeshInstance3D" parent="PlayerHandProbe"]
+[node name="MeshInstance3D" type="MeshInstance3D" parent="PlayerHandProbe" unique_id=1637309378]
 material_override = SubResource("StandardMaterial3D_player_hand")
 mesh = SubResource("SphereMesh_player_hand")
 
-[node name="CollisionShape3D" type="CollisionShape3D" parent="PlayerHandProbe"]
+[node name="CollisionShape3D" type="CollisionShape3D" parent="PlayerHandProbe" unique_id=794681442]
 shape = SubResource("SphereShape3D_player_hand")
 
-[node name="PlayerHandLabel" type="Label3D" parent="PlayerHandProbe"]
+[node name="PlayerHandLabel" type="Label3D" parent="PlayerHandProbe" unique_id=2042339045]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.26, 0)
 billboard = 1
 modulate = Color(0.72, 0.84, 1, 1)
@@ -153,7 +128,7 @@ transform = Transform3D(1, 0, 0, 0, 0.96105546, 0.27635565, 0, -0.27635565, 0.96
 current = true
 fov = 48.0
 
-[node name="PlayerInfluence" type="Node3D" parent="Camera3D" groups=["player"]]
+[node name="PlayerInfluence" type="Node3D" parent="Camera3D" unique_id=132857868 groups=["player"]]
 script = ExtResource("3_player_influence")
 gaze_range = 4.0
 dead_center_gaze_degrees = 6.5
