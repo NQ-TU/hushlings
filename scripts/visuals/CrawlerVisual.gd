@@ -162,9 +162,6 @@ const VALID_STATES := ["IDLE", "WANDER", "OBSERVE", "FLEE", "STARTLED", "CONFIDE
 		appendage_emission_strength = value
 		_request_rebuild()
 
-@export_group("Performance")
-@export_range(0.0, 90.0, 1.0) var visual_update_rate_hz: float = 30.0
-
 @export_group("Editor")
 @export var build_on_ready: bool = true
 @export var animate_in_editor: bool = false
@@ -203,7 +200,6 @@ var _smoothed_segment_scales: Array[Vector3] = []
 var _smoothed_visual_scales: Array[Vector3] = []
 var _chain_world_positions: Array[Vector3] = []
 var _chain_lead_direction: Vector3 = Vector3.BACK
-var _visual_update_accumulator: float = 0.0
 
 var _ribbon_material: StandardMaterial3D
 var _underside_material: StandardMaterial3D
@@ -229,22 +225,18 @@ func _process(delta: float) -> void:
 	if auto_bind_parent and (_agent == null or not is_instance_valid(_agent)):
 		_try_bind_parent()
 
-	var visual_delta: float = _consume_visual_delta(delta)
-	if visual_delta <= 0.0:
-		return
-
 	if read_agent_each_frame:
 		_read_agent_values()
 
-	_time += visual_delta
-	_state_age += visual_delta
-	var velocity_alpha: float = 1.0 - exp(-velocity_response * visual_delta)
+	_time += delta
+	_state_age += delta
+	var velocity_alpha: float = 1.0 - exp(-velocity_response * delta)
 	_previous_velocity = _velocity
 	_velocity = _velocity.lerp(_desired_velocity, velocity_alpha)
 
-	_update_pose_motion(visual_delta)
-	_update_ribbon_body(visual_delta)
-	_update_appendages(visual_delta)
+	_update_pose_motion(delta)
+	_update_ribbon_body(delta)
+	_update_appendages(delta)
 
 
 func bind_agent(agent: Node) -> void:
@@ -255,20 +247,6 @@ func bind_agent(agent: Node) -> void:
 
 	for property in _agent.get_property_list():
 		_agent_properties[StringName(property.get("name", ""))] = true
-
-
-func _consume_visual_delta(delta: float) -> float:
-	if visual_update_rate_hz <= 0.0:
-		return delta
-
-	_visual_update_accumulator += delta
-	var step: float = 1.0 / visual_update_rate_hz
-	if _visual_update_accumulator < step:
-		return 0.0
-
-	var consumed: float = min(_visual_update_accumulator, step * 2.0)
-	_visual_update_accumulator = 0.0
-	return consumed
 
 
 func set_velocity(velocity: Vector3) -> void:

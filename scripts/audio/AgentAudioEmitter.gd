@@ -41,9 +41,6 @@ const MIN_VOLUME_DB := -80.0
 @export_range(0.0, 0.4, 0.01) var pitch_variation: float = 0.08
 @export_range(1.0, 24.0, 0.1) var volume_fade_speed: float = 8.0
 
-@export_group("Performance")
-@export_range(0.0, 0.5, 0.01) var audio_update_interval: float = 0.08
-
 var _target: Node
 var _property_names: Dictionary = {}
 var _movement_player: AudioStreamPlayer3D
@@ -52,7 +49,6 @@ var _flee_player: AudioStreamPlayer3D
 var _last_state: String = ""
 var _one_shot_cooldown_remaining: float = 0.0
 var _pitch_variation_scale: float = 1.0
-var _audio_update_accumulator: float = 0.0
 
 
 func _ready() -> void:
@@ -69,16 +65,12 @@ func _process(delta: float) -> void:
 	if _target == null:
 		return
 
-	var audio_delta: float = _consume_audio_delta(delta)
-	if audio_delta <= 0.0:
-		return
-
-	_one_shot_cooldown_remaining = maxf(0.0, _one_shot_cooldown_remaining - audio_delta)
+	_one_shot_cooldown_remaining = maxf(0.0, _one_shot_cooldown_remaining - delta)
 	var state: String = _read_string(&"current_state", "WANDER")
 	var kind: String = _resolved_agent_kind()
 
-	_update_movement_loop(state, audio_delta)
-	_update_group_murmur(kind, state, audio_delta)
+	_update_movement_loop(state, delta)
+	_update_group_murmur(kind, state, delta)
 	_update_one_shots(state)
 	_last_state = state
 
@@ -96,19 +88,6 @@ func _create_player(player_name: String, stream_value: AudioStream, loop_player:
 	if loop_player and audio_enabled and stream_value != null:
 		player.play()
 	return player
-
-
-func _consume_audio_delta(delta: float) -> float:
-	if audio_update_interval <= 0.0:
-		return delta
-
-	_audio_update_accumulator += delta
-	if _audio_update_accumulator < audio_update_interval:
-		return 0.0
-
-	var consumed: float = min(_audio_update_accumulator, audio_update_interval * 2.0)
-	_audio_update_accumulator = 0.0
-	return consumed
 
 
 func _update_movement_loop(state: String, delta: float) -> void:

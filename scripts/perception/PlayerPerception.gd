@@ -82,7 +82,8 @@ static func find_direct_gaze_source(
 			los_collision_mask,
 			Vector3.ZERO,
 			Vector3.ZERO,
-			los_end_margin
+			los_end_margin,
+			[player_hand_group]
 		):
 			continue
 

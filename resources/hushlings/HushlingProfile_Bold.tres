@@ -42,6 +42,5 @@ separation_radius = 0.27
 separation_weight = 0.62
 separation_prediction_time = 0.55
 group_radius = 1.55
-cohesion_weight = 0.12
 alignment_weight = 0.04
 flock_heading_weight = 0.14

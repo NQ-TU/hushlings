@@ -40,7 +40,8 @@ static func has_line_of_sight(
 	collision_mask: int,
 	start_offset: Vector3 = Vector3.ZERO,
 	target_offset: Vector3 = Vector3.ZERO,
-	end_margin: float = 0.04
+	end_margin: float = 0.04,
+	ignored_groups: Array = []
 ) -> bool:
 	if observer == null or target == null:
 		return false
@@ -58,13 +59,28 @@ static func has_line_of_sight(
 
 	var direction: Vector3 = to_target / distance
 	var clipped_end: Vector3 = target_position - direction * min(max(end_margin, 0.0), distance * 0.45)
-	var query := PhysicsRayQueryParameters3D.create(origin, clipped_end)
-	query.collision_mask = collision_mask
-	query.collide_with_areas = true
-	query.collide_with_bodies = true
-	query.exclude = _build_exclude_rids(observer, target)
+	var exclude_rids: Array[RID] = _build_exclude_rids(observer, target)
+	var space_state := observer.get_world_3d().direct_space_state
+	for _step in range(8):
+		var query := PhysicsRayQueryParameters3D.create(origin, clipped_end)
+		query.collision_mask = collision_mask
+		query.collide_with_areas = true
+		query.collide_with_bodies = true
+		query.exclude = exclude_rids
 
-	return observer.get_world_3d().direct_space_state.intersect_ray(query).is_empty()
+		var hit: Dictionary = space_state.intersect_ray(query)
+		if hit.is_empty():
+			return true
+
+		var collider := hit.get("collider") as Node
+		if not _is_in_any_group(collider, ignored_groups):
+			return false
+		if collider is CollisionObject3D:
+			exclude_rids.append((collider as CollisionObject3D).get_rid())
+		else:
+			return true
+
+	return false
 
 
 static func is_target_in_fov(observer: Node3D, target: Node3D, fov_degrees: float) -> bool:
@@ -97,3 +113,14 @@ static func _build_exclude_rids(observer: Node3D, target: Node3D) -> Array[RID]:
 	if target is CollisionObject3D:
 		exclude_rids.append((target as CollisionObject3D).get_rid())
 	return exclude_rids
+
+
+static func _is_in_any_group(node: Node, group_names: Array) -> bool:
+	if node == null:
+		return false
+
+	for group_name in group_names:
+		if node.is_in_group(group_name):
+			return true
+
+	return false
