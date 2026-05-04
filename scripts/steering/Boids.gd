@@ -54,6 +54,92 @@ static func separation(
 	return combined.normalized() * max_speed
 
 
+static func cohesion(
+	observer: Node3D,
+	neighbours: Array,
+	radius: float,
+	max_speed: float
+) -> Vector3:
+	if observer == null or radius <= 0.0001 or max_speed <= 0.0:
+		return Vector3.ZERO
+
+	var radius_sq: float = radius * radius
+	var center: Vector3 = Vector3.ZERO
+	var count: int = 0
+	for candidate in neighbours:
+		var neighbour := candidate as Node3D
+		if neighbour == null or neighbour == observer:
+			continue
+
+		var distance_sq: float = observer.global_position.distance_squared_to(neighbour.global_position)
+		if distance_sq > radius_sq:
+			continue
+
+		center += neighbour.global_position
+		count += 1
+
+	if count == 0:
+		return Vector3.ZERO
+
+	center /= float(count)
+	var to_center: Vector3 = center - observer.global_position
+	if to_center.length_squared() <= 0.0001:
+		return Vector3.ZERO
+
+	return to_center.normalized() * max_speed
+
+
+static func alignment(
+	observer: Node3D,
+	neighbours: Array,
+	radius: float,
+	max_speed: float
+) -> Vector3:
+	if observer == null or radius <= 0.0001 or max_speed <= 0.0:
+		return Vector3.ZERO
+
+	var radius_sq: float = radius * radius
+	var average_velocity: Vector3 = Vector3.ZERO
+	var count: int = 0
+	for candidate in neighbours:
+		var neighbour := candidate as Node3D
+		if neighbour == null or neighbour == observer:
+			continue
+
+		var distance_sq: float = observer.global_position.distance_squared_to(neighbour.global_position)
+		if distance_sq > radius_sq:
+			continue
+
+		average_velocity += _read_vector_property(neighbour, &"velocity")
+		count += 1
+
+	if count == 0:
+		return Vector3.ZERO
+
+	average_velocity /= float(count)
+	if average_velocity.length_squared() <= 0.0001:
+		return Vector3.ZERO
+
+	return average_velocity.normalized() * max_speed
+
+
+static func neighbour_count(observer: Node3D, neighbours: Array, radius: float) -> int:
+	if observer == null or radius <= 0.0001:
+		return 0
+
+	var radius_sq: float = radius * radius
+	var count: int = 0
+	for candidate in neighbours:
+		var neighbour := candidate as Node3D
+		if neighbour == null or neighbour == observer:
+			continue
+
+		if observer.global_position.distance_squared_to(neighbour.global_position) <= radius_sq:
+			count += 1
+
+	return count
+
+
 static func _safe_direction(value: Vector3, fallback: Vector3) -> Vector3:
 	if value.length_squared() <= 0.0001:
 		return fallback.normalized()

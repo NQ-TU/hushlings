@@ -15,6 +15,8 @@ class_name AgentDebugDraw
 @export var show_steering_force: bool = false
 @export var show_final_velocity: bool = false
 @export var show_separation_force: bool = true
+@export var show_cohesion_force: bool = false
+@export var show_alignment_force: bool = false
 @export var show_wander_direction: bool = false
 @export var show_target_ray: bool = true
 @export var show_state_label: bool = true
@@ -36,6 +38,8 @@ class_name AgentDebugDraw
 @export var home_line_color: Color = Color(0.35, 0.65, 0.9, 0.22)
 @export var separation_radius_color: Color = Color(1.0, 0.55, 0.12, 0.12)
 @export var separation_force_color: Color = Color(1.0, 0.55, 0.08, 0.82)
+@export var cohesion_force_color: Color = Color(0.1, 0.85, 0.9, 0.62)
+@export var alignment_force_color: Color = Color(0.35, 0.68, 1.0, 0.62)
 @export var wander_direction_color: Color = Color(0.15, 0.95, 0.95, 0.55)
 @export var velocity_color: Color = Color(0.2, 0.45, 1.0, 0.78)
 @export var desired_velocity_color: Color = Color(0.15, 0.9, 0.25, 0.78)
@@ -160,6 +164,20 @@ func _draw_debug() -> void:
 			separation_force_color
 		)
 
+	if show_cohesion_force:
+		_draw_arrow(
+			vector_origin,
+			_read_vector_property(&"cohesion_force", Vector3.ZERO) * force_vector_scale,
+			cohesion_force_color
+		)
+
+	if show_alignment_force:
+		_draw_arrow(
+			vector_origin,
+			_read_vector_property(&"alignment_force", Vector3.ZERO) * force_vector_scale,
+			alignment_force_color
+		)
+
 	if show_target_ray and _read_bool_property(&"debug_has_target", false):
 		var target_position: Vector3 = _read_vector_property(&"debug_target_position", agent_position)
 		_debug_draw_3d.call("draw_line", agent_position, target_position, target_ray_color)
@@ -195,18 +213,25 @@ func _update_overlay() -> void:
 	var desired_velocity: Vector3 = _read_vector_property(&"desired_velocity", Vector3.ZERO)
 	var steering_force: Vector3 = _read_vector_property(&"steering_force", Vector3.ZERO)
 	var separation_force: Vector3 = _read_vector_property(&"separation_force", Vector3.ZERO)
+	var cohesion_force: Vector3 = _read_vector_property(&"cohesion_force", Vector3.ZERO)
+	var alignment_force: Vector3 = _read_vector_property(&"alignment_force", Vector3.ZERO)
+	var neighbour_count: int = _read_int_property(&"debug_neighbour_count", 0)
+	var interest_visible: bool = _read_bool_property(&"debug_interest_visible", false)
+	var interest_sees_agent: bool = _read_bool_property(&"debug_interest_sees_agent", false)
 
 	if compact_2d_overlay:
 		_debug_draw_2d.call("set_text", "Hushlings/debug", "G debug | 0 AUTO 1 WANDER 2 SEEK 3 ARRIVE 4 FLEE")
 		_debug_draw_2d.call(
 			"set_text",
 			"Agent/status",
-			"%s | speed %.2f | interest %s | threat %s | sep %s" % [
+			"%s | speed %.2f | group %d | interest %s | visible %s | watched %s | threat %s" % [
 				_read_string_property(&"current_state", fallback_state_name),
 				velocity.length(),
+				neighbour_count,
 				_format_distance(_read_float_property(&"debug_interest_distance", -1.0)),
+				_format_bool(interest_visible),
+				_format_bool(interest_sees_agent),
 				_format_distance(_read_float_property(&"debug_threat_distance", -1.0)),
-				_format_vector(separation_force)
 			]
 		)
 		_clear_verbose_overlay()
@@ -222,6 +247,10 @@ func _update_overlay() -> void:
 	_debug_draw_2d.call("set_text", "Agent/desired_velocity", _format_vector(desired_velocity))
 	_debug_draw_2d.call("set_text", "Agent/steering_force", _format_vector(steering_force))
 	_debug_draw_2d.call("set_text", "Agent/separation_force", _format_vector(separation_force))
+	_debug_draw_2d.call("set_text", "Agent/cohesion_force", _format_vector(cohesion_force))
+	_debug_draw_2d.call("set_text", "Agent/alignment_force", _format_vector(alignment_force))
+	_debug_draw_2d.call("set_text", "Agent/interest_visible", str(interest_visible))
+	_debug_draw_2d.call("set_text", "Agent/interest_sees_agent", str(interest_sees_agent))
 
 
 func _clear_overlay() -> void:
@@ -245,6 +274,10 @@ func _clear_verbose_overlay() -> void:
 	_debug_draw_2d.call("set_text", "Agent/desired_velocity", "")
 	_debug_draw_2d.call("set_text", "Agent/steering_force", "")
 	_debug_draw_2d.call("set_text", "Agent/separation_force", "")
+	_debug_draw_2d.call("set_text", "Agent/cohesion_force", "")
+	_debug_draw_2d.call("set_text", "Agent/alignment_force", "")
+	_debug_draw_2d.call("set_text", "Agent/interest_visible", "")
+	_debug_draw_2d.call("set_text", "Agent/interest_sees_agent", "")
 
 
 func _get_agent_label_text() -> String:
@@ -266,6 +299,15 @@ func _read_float_property(property_name: StringName, fallback: float) -> float:
 		return value
 	if value is int:
 		return float(value)
+	return fallback
+
+
+func _read_int_property(property_name: StringName, fallback: int) -> int:
+	var value: Variant = _target.get(property_name)
+	if value is int:
+		return value
+	if value is float:
+		return int(value)
 	return fallback
 
 
@@ -293,3 +335,7 @@ func _format_distance(value: float) -> String:
 	if value < 0.0:
 		return "--"
 	return "%.2f" % value
+
+
+func _format_bool(value: bool) -> String:
+	return "yes" if value else "no"

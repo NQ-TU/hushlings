@@ -40,8 +40,17 @@ enum BehaviourState {
 @export_range(0.0, 5.0, 0.01) var interest_flee_clearance: float = 0.2
 @export_range(0.05, 10.0, 0.01) var flee_radius: float = 0.7
 @export_range(0.1, 10.0, 0.01) var flee_safe_radius: float = 1.35
-@export_range(0.0, 5.0, 0.01) var observe_speed_scale: float = 0.75
+@export_range(0.05, 1.0, 0.01) var calm_speed_scale: float = 0.45
+@export_range(0.0, 5.0, 0.01) var observe_speed_scale: float = 0.42
+@export_range(0.05, 1.0, 0.01) var observe_speed_limit_scale: float = 0.32
 @export_range(0.0, 5.0, 0.01) var flee_speed_scale: float = 1.0
+
+@export_group("Visibility")
+@export var require_interest_los_to_observe: bool = true
+@export_range(1.0, 360.0, 1.0) var interest_fov_degrees: float = 145.0
+@export var flee_if_interest_sees_agent: bool = true
+@export_range(1.0, 360.0, 1.0) var interest_gaze_fov_degrees: float = 115.0
+@export_range(0.05, 10.0, 0.01) var interest_gaze_flee_radius: float = 1.45
 
 @export_group("Wander")
 @export_range(0.0, 2.0, 0.01) var wander_strength: float = 0.86
@@ -53,22 +62,36 @@ enum BehaviourState {
 @export_range(0.1, 10.0, 0.01) var home_radius: float = 1.25
 @export_range(0.0, 4.0, 0.01) var home_tether_strength: float = 0.72
 
-@export_group("Social Separation")
+@export_group("Social Boids")
+@export var social_forces_enabled: bool = true
 @export var separation_enabled: bool = true
 @export var neighbour_group: StringName = &"hushling"
 @export_range(0.01, 3.0, 0.01) var separation_radius: float = 0.38
 @export_range(0.0, 5.0, 0.01) var separation_weight: float = 0.85
 @export_range(0.0, 3.0, 0.01) var separation_prediction_time: float = 0.7
+@export_range(0.01, 5.0, 0.01) var group_radius: float = 1.3
+@export_range(0.0, 5.0, 0.01) var cohesion_weight: float = 0.12
+@export_range(0.0, 5.0, 0.01) var alignment_weight: float = 0.05
+@export var group_flee_enabled: bool = true
+@export_range(0.01, 5.0, 0.01) var group_flee_radius: float = 1.35
+@export_range(0.05, 5.0, 0.01) var group_flee_memory_time: float = 1.2
+@export_group("Individual Variation")
+@export_range(0.0, 1.0, 0.01) var per_agent_variation: float = 0.18
 
 var home_position: Vector3 = Vector3.ZERO
 var current_wander_direction: Vector3 = Vector3.FORWARD
 var current_state: String = "WANDER"
 var separation_force: Vector3 = Vector3.ZERO
+var cohesion_force: Vector3 = Vector3.ZERO
+var alignment_force: Vector3 = Vector3.ZERO
+var debug_neighbour_count: int = 0
 var debug_has_target: bool = false
 var debug_target_position: Vector3 = Vector3.ZERO
 var debug_target_name: String = ""
 var debug_interest_distance: float = -1.0
 var debug_threat_distance: float = -1.0
+var debug_interest_visible: bool = false
+var debug_interest_sees_agent: bool = false
 
 var _elapsed_time: float = 0.0
 var _wander_seed: float = 0.0
@@ -78,13 +101,21 @@ var _flee_threat: Node3D
 var _interest_target: Node3D
 var _threat_target: Node3D
 var _autonomous_flee_target: Node3D
+var _autonomous_flee_clear_distance: float = 0.0
+var _group_flee_source: Node3D
+var _group_flee_time_remaining: float = 0.0
 var _autonomous_state: BehaviourState = BehaviourState.WANDER
 var _separation_fallback_direction: Vector3 = Vector3.RIGHT
+var _speed_variation: float = 1.0
+var _wander_variation: float = 1.0
+var _cohesion_variation: float = 1.0
+var _alignment_variation: float = 1.0
 
 
 func _ready() -> void:
 	home_position = global_position
 	_wander_seed = _seed_from_name()
+	_setup_individual_variation()
 	current_wander_direction = _sample_wander_direction(0.0)
 	_separation_fallback_direction = _sample_wander_direction(0.37)
 	direction = current_wander_direction
@@ -94,6 +125,7 @@ func _ready() -> void:
 
 func _process(delta: float) -> void:
 	_elapsed_time += delta
+	_update_group_flee_memory(delta)
 	_update_wander_direction(delta)
 	_resolve_missing_target_nodes()
 	_update_perception_targets()
@@ -101,7 +133,8 @@ func _process(delta: float) -> void:
 
 	var desired: Vector3 = _calculate_desired_velocity()
 	desired = _apply_home_tether(desired)
-	desired += _calculate_separation_force()
+	desired += _calculate_social_forces()
+	desired = SteeringHelper.limit_vector(desired, _get_active_speed_limit())
 	apply_desired_velocity(desired, delta)
 
 
@@ -183,7 +216,7 @@ func _calculate_autonomous_desired_velocity() -> Vector3:
 
 
 func _calculate_wander_velocity() -> Vector3:
-	return current_wander_direction * max_speed * wander_strength
+	return current_wander_direction * max_speed * wander_strength * _wander_variation
 
 
 func _calculate_observe_velocity(target_position: Vector3) -> Vector3:
@@ -235,35 +268,69 @@ func _should_apply_home_tether() -> bool:
 	return apply_home_tether_in_test_modes
 
 
-func _calculate_separation_force() -> Vector3:
-	if not separation_enabled or not is_inside_tree():
+func _calculate_social_forces() -> Vector3:
+	if not social_forces_enabled or not is_inside_tree():
 		separation_force = Vector3.ZERO
-		return separation_force
+		cohesion_force = Vector3.ZERO
+		alignment_force = Vector3.ZERO
+		debug_neighbour_count = 0
+		return Vector3.ZERO
 
-	separation_force = BoidsHelper.separation(
+	var neighbours: Array = get_tree().get_nodes_in_group(neighbour_group)
+	if separation_enabled:
+		separation_force = BoidsHelper.separation(
+			self,
+			neighbours,
+			separation_radius,
+			max_speed,
+			_separation_fallback_direction,
+			separation_prediction_time
+		) * separation_weight
+	else:
+		separation_force = Vector3.ZERO
+	cohesion_force = BoidsHelper.cohesion(
 		self,
-		get_tree().get_nodes_in_group(neighbour_group),
-		separation_radius,
-		max_speed,
-		_separation_fallback_direction,
-		separation_prediction_time
-	) * separation_weight
-	return separation_force
+		neighbours,
+		group_radius,
+		max_speed
+	) * cohesion_weight * _cohesion_variation
+	alignment_force = BoidsHelper.alignment(
+		self,
+		neighbours,
+		group_radius,
+		max_speed
+	) * alignment_weight * _alignment_variation
+	debug_neighbour_count = BoidsHelper.neighbour_count(self, neighbours, group_radius)
+
+	return separation_force + cohesion_force + alignment_force
 
 
 func _update_autonomous_state() -> void:
 	debug_interest_distance = _distance_to_or_negative(_interest_target)
 	debug_threat_distance = _distance_to_or_negative(_threat_target)
+	debug_interest_visible = _can_observe_interest_target()
+	debug_interest_sees_agent = _interest_target_has_los_to_agent()
 
 	if not autonomous_enabled:
 		return
 
 	if _threat_target and debug_threat_distance <= flee_radius:
+		_clear_group_flee_memory()
+		_autonomous_flee_clear_distance = flee_safe_radius
 		_autonomous_flee_target = _threat_target
 		_autonomous_state = BehaviourState.FLEE
 		return
 
 	if _interest_target and debug_interest_distance <= interest_flee_radius:
+		_clear_group_flee_memory()
+		_autonomous_flee_clear_distance = _get_close_interest_flee_safe_distance()
+		_autonomous_flee_target = _interest_target
+		_autonomous_state = BehaviourState.FLEE
+		return
+
+	if debug_interest_sees_agent:
+		_clear_group_flee_memory()
+		_autonomous_flee_clear_distance = interest_gaze_flee_radius + interest_flee_clearance
 		_autonomous_flee_target = _interest_target
 		_autonomous_state = BehaviourState.FLEE
 		return
@@ -274,10 +341,21 @@ func _update_autonomous_state() -> void:
 		var safe_distance: float = _get_flee_safe_distance(flee_target)
 		if flee_target and flee_target_distance < safe_distance:
 			return
+		_clear_group_flee_memory()
 		_autonomous_flee_target = null
+		_autonomous_flee_clear_distance = 0.0
 		_autonomous_state = BehaviourState.WANDER
 
-	if _interest_target and debug_interest_distance <= awareness_radius:
+	var group_flee_source: Node3D = _find_group_flee_source()
+	if group_flee_source:
+		_group_flee_source = group_flee_source
+		_group_flee_time_remaining = group_flee_memory_time
+		_autonomous_flee_clear_distance = _get_group_flee_clear_distance(group_flee_source)
+		_autonomous_flee_target = group_flee_source
+		_autonomous_state = BehaviourState.FLEE
+		return
+
+	if _interest_target and debug_interest_distance <= awareness_radius and debug_interest_visible:
 		_autonomous_state = BehaviourState.OBSERVE
 		return
 
@@ -322,7 +400,7 @@ func _update_perception_targets() -> void:
 		_interest_target = PerceptionHelper.nearest_in_group(
 			self,
 			interest_group,
-			awareness_radius
+			_get_interest_perception_radius()
 		)
 
 	if _threat_target == null:
@@ -358,6 +436,90 @@ func _distance_to_or_negative(target: Node3D) -> float:
 	return PerceptionHelper.distance_to_or_negative(self, target)
 
 
+func is_fleeing() -> bool:
+	if steering_mode == SteeringMode.FLEE:
+		return true
+
+	return steering_mode == SteeringMode.AUTO and _autonomous_state == BehaviourState.FLEE
+
+
+func is_propagating_flee() -> bool:
+	if not is_fleeing():
+		return false
+
+	return _group_flee_source == null
+
+
+func get_flee_source() -> Node3D:
+	return _get_autonomous_flee_target()
+
+
+func get_flee_clear_distance() -> float:
+	return _get_flee_safe_distance(_get_autonomous_flee_target())
+
+
+func _find_group_flee_source() -> Node3D:
+	if not group_flee_enabled or not is_inside_tree():
+		return null
+
+	var nearest_source: Node3D
+	var nearest_distance_sq: float = group_flee_radius * group_flee_radius
+	for candidate in get_tree().get_nodes_in_group(neighbour_group):
+		var neighbour := candidate as Node3D
+		if neighbour == null or neighbour == self:
+			continue
+
+		var distance_sq: float = global_position.distance_squared_to(neighbour.global_position)
+		if distance_sq > nearest_distance_sq:
+			continue
+
+		if not neighbour.has_method(&"is_propagating_flee") \
+				or not bool(neighbour.call(&"is_propagating_flee")):
+			continue
+
+		nearest_distance_sq = distance_sq
+		nearest_source = neighbour.call(&"get_flee_source") as Node3D
+		if nearest_source == null:
+			nearest_source = neighbour
+
+	return nearest_source
+
+
+func _get_group_flee_clear_distance(group_flee_source: Node3D) -> float:
+	for candidate in get_tree().get_nodes_in_group(neighbour_group):
+		var neighbour := candidate as Node3D
+		if neighbour == null or neighbour == self:
+			continue
+		if not neighbour.has_method(&"is_propagating_flee") \
+				or not bool(neighbour.call(&"is_propagating_flee")):
+			continue
+
+		var neighbour_source := neighbour.call(&"get_flee_source") as Node3D
+		if neighbour_source != group_flee_source:
+			continue
+		if neighbour.has_method(&"get_flee_clear_distance"):
+			var clear_distance: float = float(neighbour.call(&"get_flee_clear_distance"))
+			if clear_distance > 0.0:
+				return clear_distance
+
+	return _get_flee_safe_distance(group_flee_source)
+
+
+func _update_group_flee_memory(delta: float) -> void:
+	if _group_flee_time_remaining <= 0.0:
+		_group_flee_source = null
+		return
+
+	_group_flee_time_remaining = max(_group_flee_time_remaining - delta, 0.0)
+	if _group_flee_time_remaining <= 0.0:
+		_group_flee_source = null
+
+
+func _clear_group_flee_memory() -> void:
+	_group_flee_source = null
+	_group_flee_time_remaining = 0.0
+
+
 func _get_autonomous_flee_target() -> Node3D:
 	if is_instance_valid(_autonomous_flee_target):
 		return _autonomous_flee_target
@@ -369,10 +531,96 @@ func _get_autonomous_flee_target() -> Node3D:
 
 
 func _get_flee_safe_distance(flee_target: Node3D) -> float:
+	if _autonomous_flee_clear_distance > 0.0:
+		return _autonomous_flee_clear_distance
+
 	if flee_target and flee_target.is_in_group(interest_group):
-		return max(awareness_radius, observe_distance, interest_flee_radius) + interest_flee_clearance
+		return _get_close_interest_flee_safe_distance()
 
 	return flee_safe_radius
+
+
+func _get_close_interest_flee_safe_distance() -> float:
+	return max(awareness_radius, observe_distance, interest_flee_radius) + interest_flee_clearance
+
+
+func _get_interest_perception_radius() -> float:
+	if flee_if_interest_sees_agent:
+		return max(awareness_radius, interest_gaze_flee_radius)
+
+	return awareness_radius
+
+
+func _can_observe_interest_target() -> bool:
+	if _interest_target == null:
+		return false
+	if debug_interest_distance < 0.0 or debug_interest_distance > awareness_radius:
+		return false
+	if not require_interest_los_to_observe:
+		return true
+
+	return _is_target_in_fov(self, _interest_target, interest_fov_degrees)
+
+
+func _interest_target_has_los_to_agent() -> bool:
+	if not flee_if_interest_sees_agent or _interest_target == null:
+		return false
+	if debug_interest_distance < 0.0 or debug_interest_distance > interest_gaze_flee_radius:
+		return false
+
+	return _is_target_in_fov(_interest_target, self, interest_gaze_fov_degrees)
+
+
+func _is_target_in_fov(observer: Node3D, target: Node3D, fov_degrees: float) -> bool:
+	if observer == null or target == null:
+		return false
+	if fov_degrees >= 359.0:
+		return true
+
+	var to_target: Vector3 = target.global_position - observer.global_position
+	if to_target.length_squared() <= 0.0001:
+		return true
+
+	var forward: Vector3 = _get_agent_forward(observer)
+	var dot_to_target: float = clamp(forward.dot(to_target.normalized()), -1.0, 1.0)
+	var fov_threshold: float = cos(deg_to_rad(fov_degrees * 0.5))
+	return dot_to_target >= fov_threshold
+
+
+func _get_agent_forward(agent: Node3D) -> Vector3:
+	var direction_value: Variant = agent.get(&"direction")
+	if direction_value is Vector3 and direction_value.length_squared() > 0.0001:
+		return direction_value.normalized()
+
+	return (-agent.global_transform.basis.z).normalized()
+
+
+func _get_active_speed_limit() -> float:
+	if steering_mode == SteeringMode.FLEE:
+		return max_speed * flee_speed_scale
+
+	if steering_mode == SteeringMode.AUTO and _autonomous_state == BehaviourState.FLEE:
+		return max_speed * flee_speed_scale
+
+	if steering_mode == SteeringMode.AUTO and _autonomous_state == BehaviourState.OBSERVE:
+		return max_speed * observe_speed_limit_scale * _speed_variation
+
+	return max_speed * calm_speed_scale * _speed_variation
+
+
+func _setup_individual_variation() -> void:
+	_speed_variation = _variation_multiplier(11.0)
+	_wander_variation = _variation_multiplier(23.0)
+	_cohesion_variation = _variation_multiplier(37.0)
+	_alignment_variation = _variation_multiplier(51.0)
+
+
+func _variation_multiplier(offset: float) -> float:
+	if per_agent_variation <= 0.0:
+		return 1.0
+
+	var sample: float = sin(_wander_seed + offset)
+	return 1.0 + sample * per_agent_variation
 
 
 func _sample_wander_direction(time: float) -> Vector3:
