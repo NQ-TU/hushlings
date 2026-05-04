@@ -33,8 +33,9 @@ class_name XRAgentSpawner
 
 @export_group("XR Habitat")
 @export var use_shared_home_bounds: bool = true
+@export var habitat_follows_player: bool = true
 @export var habitat_center_offset: Vector3 = Vector3(0.0, -0.45, 0.0)
-@export var habitat_bounds_size: Vector3 = Vector3(5.5, 2.6, 5.5)
+@export var habitat_bounds_size: Vector3 = Vector3(2.2, 1.3, 2.2)
 @export_range(0.0, 4.0, 0.01) var xr_habitat_tether_strength: float = 0.72
 
 @export_group("XR Behaviour Tuning")
@@ -46,8 +47,8 @@ class_name XRAgentSpawner
 @export_range(0.1, 5.0, 0.01) var xr_regroup_radius: float = 1.35
 @export_range(0.1, 5.0, 0.01) var xr_hushling_home_radius: float = 0.72
 @export_range(0.1, 5.0, 0.01) var xr_crawler_home_radius: float = 0.55
-@export_range(0.01, 2.0, 0.01) var xr_crawler_max_speed: float = 0.28
-@export_range(0.01, 2.0, 0.01) var xr_crawler_max_force: float = 0.26
+@export_range(0.01, 2.0, 0.01) var xr_crawler_max_speed: float = 0.38
+@export_range(0.01, 2.0, 0.01) var xr_crawler_max_force: float = 0.38
 
 var _shared_home_position: Vector3 = Vector3.ZERO
 var _spawned_world_positions: Array[Vector3] = []
@@ -57,6 +58,14 @@ var _rng := RandomNumberGenerator.new()
 func _ready() -> void:
 	if spawn_on_ready:
 		call_deferred("spawn_agents")
+
+
+func _process(_delta: float) -> void:
+	if not use_shared_home_bounds or not habitat_follows_player:
+		return
+
+	_shared_home_position = _offset_to_world(habitat_center_offset)
+	_update_spawned_home_bounds()
 
 
 func spawn_agents() -> void:
@@ -140,10 +149,7 @@ func _configure_hushling_after_ready(hushling: Node3D) -> void:
 		_set_if_property(hushling, &"home_radius", xr_hushling_home_radius)
 
 	if use_shared_home_bounds:
-		_set_if_property(hushling, &"use_home_bounds", true)
-		_set_if_property(hushling, &"home_bounds_size", habitat_bounds_size)
-		_set_if_property(hushling, &"home_tether_strength", xr_habitat_tether_strength)
-		_set_if_property(hushling, &"home_position", _shared_home_position)
+		_apply_shared_home_bounds(hushling)
 	else:
 		_set_if_property(hushling, &"use_home_bounds", false)
 		_set_if_property(hushling, &"home_position", hushling.global_position)
@@ -159,13 +165,27 @@ func _configure_crawler_after_ready(crawler: Node3D) -> void:
 		_set_if_property(crawler, &"max_force", xr_crawler_max_force)
 
 	if use_shared_home_bounds:
-		_set_if_property(crawler, &"use_home_bounds", true)
-		_set_if_property(crawler, &"home_bounds_size", habitat_bounds_size)
-		_set_if_property(crawler, &"home_tether_strength", xr_habitat_tether_strength)
-		_set_if_property(crawler, &"home_position", _shared_home_position)
+		_apply_shared_home_bounds(crawler)
 	else:
 		_set_if_property(crawler, &"use_home_bounds", false)
 		_set_if_property(crawler, &"home_position", crawler.global_position)
+
+
+func _apply_shared_home_bounds(agent: Node) -> void:
+	_set_if_property(agent, &"use_home_bounds", true)
+	_set_if_property(agent, &"home_bounds_size", habitat_bounds_size)
+	_set_if_property(agent, &"home_tether_strength", xr_habitat_tether_strength)
+	_set_if_property(agent, &"home_position", _shared_home_position)
+
+
+func _update_spawned_home_bounds() -> void:
+	var creature_root := get_node_or_null(creature_root_path) as Node3D
+	if creature_root == null:
+		return
+
+	for child in creature_root.get_children():
+		if child is Node and child.is_in_group(spawned_group):
+			_apply_shared_home_bounds(child)
 
 
 func _get_hushling_spawn_position(index: int) -> Vector3:
