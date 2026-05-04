@@ -2,12 +2,25 @@
 
 [ext_resource type="PackedScene" path="res://scenes/agents/HushlingAgent.tscn" id="1_hushling_agent"]
 
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_floor"]
-albedo_color = Color(0.04, 0.045, 0.055, 1)
-roughness = 0.88
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_seek_target"]
+albedo_color = Color(0.1, 0.8, 0.32, 1)
+roughness = 0.5
+emission_enabled = true
+emission = Color(0.05, 0.55, 0.18, 1)
+emission_energy_multiplier = 0.45
 
-[sub_resource type="PlaneMesh" id="PlaneMesh_floor"]
-size = Vector2(4, 4)
+[sub_resource type="SphereMesh" id="SphereMesh_marker"]
+radius = 0.085
+height = 0.17
+radial_segments = 16
+rings = 8
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_flee_threat"]
+albedo_color = Color(0.88, 0.18, 0.12, 1)
+roughness = 0.52
+emission_enabled = true
+emission = Color(0.66, 0.04, 0.03, 1)
+emission_energy_multiplier = 0.55
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_home_marker"]
 albedo_color = Color(0.22, 0.42, 0.62, 1)
@@ -36,11 +49,33 @@ reflected_light_source = 2
 
 [node name="HushlingAgent" parent="." unique_id=1845606375 instance=ExtResource("1_hushling_agent")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.34, 0)
+seek_target_path = NodePath("../SeekArriveTarget")
+arrive_target_path = NodePath("../SeekArriveTarget")
+flee_threat_path = NodePath("../FleeThreat")
 
-[node name="ReferenceFloor" type="MeshInstance3D" parent="." unique_id=352379870]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.02, 0)
-material_override = SubResource("StandardMaterial3D_floor")
-mesh = SubResource("PlaneMesh_floor")
+[node name="SeekArriveTarget" type="MeshInstance3D" parent="." unique_id=1066932433]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.05, 0.48, -0.48)
+material_override = SubResource("StandardMaterial3D_seek_target")
+mesh = SubResource("SphereMesh_marker")
+
+[node name="SeekArriveLabel" type="Label3D" parent="SeekArriveTarget" unique_id=1833803072]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.18, 0)
+billboard = 1
+modulate = Color(0.72, 1, 0.78, 1)
+text = "SEEK / ARRIVE"
+font_size = 22
+
+[node name="FleeThreat" type="MeshInstance3D" parent="." unique_id=1271892773]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.95, 0.44, 0.52)
+material_override = SubResource("StandardMaterial3D_flee_threat")
+mesh = SubResource("SphereMesh_marker")
+
+[node name="FleeLabel" type="Label3D" parent="FleeThreat" unique_id=1555523155]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.18, 0)
+billboard = 1
+modulate = Color(1, 0.68, 0.62, 1)
+text = "FLEE THREAT"
+font_size = 22
 
 [node name="HomeMarker" type="MeshInstance3D" parent="." unique_id=1286372842]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.33, 0)

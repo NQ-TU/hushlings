@@ -13,6 +13,7 @@ class_name AgentDebugDraw
 @export var show_steering_force: bool = true
 @export var show_final_velocity: bool = true
 @export var show_wander_direction: bool = true
+@export var show_target_ray: bool = true
 @export var show_state_label: bool = true
 @export var show_2d_overlay: bool = true
 @export_range(0.001, 0.2, 0.001) var line_thickness: float = 0.025
@@ -33,13 +34,17 @@ class_name AgentDebugDraw
 @export var desired_velocity_color: Color = Color(0.15, 0.9, 0.25, 1.0)
 @export var steering_force_color: Color = Color(1.0, 0.85, 0.1, 1.0)
 @export var final_velocity_color: Color = Color(0.75, 0.25, 1.0, 1.0)
+@export var target_ray_color: Color = Color(1.0, 1.0, 1.0, 0.9)
 @export var label_color: Color = Color(0.85, 0.96, 1.0, 1.0)
 
 var _target: Node3D
+var _debug_draw_3d: Object
+var _debug_draw_2d: Object
 
 
 func _ready() -> void:
 	_resolve_target()
+	_resolve_debug_draw_singletons()
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -50,18 +55,21 @@ func _unhandled_input(event: InputEvent) -> void:
 func _process(_delta: float) -> void:
 	if not is_instance_valid(_target):
 		_resolve_target()
+	if _debug_draw_3d == null or _debug_draw_2d == null:
+		_resolve_debug_draw_singletons()
 
-	if _target == null:
+	if _target == null or _debug_draw_3d == null:
 		return
 
 	if not debug_enabled:
 		_clear_overlay()
 		return
 
-	var debug_config = DebugDraw3D.new_scoped_config()
-	debug_config.set_thickness(line_thickness)
-	debug_config.set_center_brightness(center_brightness)
-	debug_config.set_no_depth_test(draw_without_depth_test)
+	var debug_config: Variant = _debug_draw_3d.call("new_scoped_config")
+	if debug_config != null:
+		debug_config.call("set_thickness", line_thickness)
+		debug_config.call("set_center_brightness", center_brightness)
+		debug_config.call("set_no_depth_test", draw_without_depth_test)
 
 	_draw_debug()
 	_update_overlay()
@@ -76,6 +84,15 @@ func _resolve_target() -> void:
 		_target = get_parent() as Node3D
 
 
+func _resolve_debug_draw_singletons() -> void:
+	_debug_draw_3d = null
+	_debug_draw_2d = null
+	if Engine.has_singleton("DebugDraw3D"):
+		_debug_draw_3d = Engine.get_singleton("DebugDraw3D")
+	if Engine.has_singleton("DebugDraw2D"):
+		_debug_draw_2d = Engine.get_singleton("DebugDraw2D")
+
+
 func _draw_debug() -> void:
 	var agent_position: Vector3 = _target.global_position
 	var vector_origin: Vector3 = agent_position + Vector3.UP * vector_vertical_offset
@@ -83,8 +100,8 @@ func _draw_debug() -> void:
 	var home_radius: float = _read_float_property(&"home_radius", 0.0)
 
 	if show_home_volume and home_radius > 0.0:
-		DebugDraw3D.draw_sphere(home_position, home_radius, home_volume_color)
-		DebugDraw3D.draw_line(home_position, agent_position, home_line_color)
+		_debug_draw_3d.call("draw_sphere", home_position, home_radius, home_volume_color)
+		_debug_draw_3d.call("draw_line", home_position, agent_position, home_line_color)
 
 	if show_wander_direction:
 		_draw_arrow(
@@ -121,8 +138,14 @@ func _draw_debug() -> void:
 			final_velocity_color
 		)
 
+	if show_target_ray and _read_bool_property(&"debug_has_target", false):
+		var target_position: Vector3 = _read_vector_property(&"debug_target_position", agent_position)
+		_debug_draw_3d.call("draw_line", agent_position, target_position, target_ray_color)
+		_debug_draw_3d.call("draw_position", Transform3D(Basis.IDENTITY, target_position), target_ray_color)
+
 	if show_state_label:
-		DebugDraw3D.draw_text(
+		_debug_draw_3d.call(
+			"draw_text",
 			agent_position + Vector3.UP * label_height,
 			_get_agent_label_text(),
 			24,
@@ -135,10 +158,13 @@ func _draw_arrow(start_position: Vector3, vector: Vector3, color: Color) -> void
 	if vector.length_squared() <= 0.0001:
 		return
 
-	DebugDraw3D.draw_arrow(start_position, start_position + vector, color, arrow_head_size)
+	_debug_draw_3d.call("draw_arrow", start_position, start_position + vector, color, arrow_head_size)
 
 
 func _update_overlay() -> void:
+	if _debug_draw_2d == null:
+		return
+
 	if not show_2d_overlay:
 		_clear_overlay()
 		return
@@ -147,19 +173,24 @@ func _update_overlay() -> void:
 	var desired_velocity: Vector3 = _read_vector_property(&"desired_velocity", Vector3.ZERO)
 	var steering_force: Vector3 = _read_vector_property(&"steering_force", Vector3.ZERO)
 
-	DebugDraw2D.set_text("Hushlings/debug", "G toggles agent debug")
-	DebugDraw2D.set_text("Agent/state", _read_string_property(&"current_state", fallback_state_name))
-	DebugDraw2D.set_text("Agent/speed", "%.3f" % velocity.length())
-	DebugDraw2D.set_text("Agent/desired_velocity", _format_vector(desired_velocity))
-	DebugDraw2D.set_text("Agent/steering_force", _format_vector(steering_force))
+	_debug_draw_2d.call("set_text", "Hushlings/debug", "1 WANDER  2 SEEK  3 ARRIVE  4 FLEE  |  G toggles debug")
+	_debug_draw_2d.call("set_text", "Agent/state", _read_string_property(&"current_state", fallback_state_name))
+	_debug_draw_2d.call("set_text", "Agent/target", _read_string_property(&"debug_target_name", ""))
+	_debug_draw_2d.call("set_text", "Agent/speed", "%.3f" % velocity.length())
+	_debug_draw_2d.call("set_text", "Agent/desired_velocity", _format_vector(desired_velocity))
+	_debug_draw_2d.call("set_text", "Agent/steering_force", _format_vector(steering_force))
 
 
 func _clear_overlay() -> void:
-	DebugDraw2D.set_text("Hushlings/debug", "")
-	DebugDraw2D.set_text("Agent/state", "")
-	DebugDraw2D.set_text("Agent/speed", "")
-	DebugDraw2D.set_text("Agent/desired_velocity", "")
-	DebugDraw2D.set_text("Agent/steering_force", "")
+	if _debug_draw_2d == null:
+		return
+
+	_debug_draw_2d.call("set_text", "Hushlings/debug", "")
+	_debug_draw_2d.call("set_text", "Agent/state", "")
+	_debug_draw_2d.call("set_text", "Agent/target", "")
+	_debug_draw_2d.call("set_text", "Agent/speed", "")
+	_debug_draw_2d.call("set_text", "Agent/desired_velocity", "")
+	_debug_draw_2d.call("set_text", "Agent/steering_force", "")
 
 
 func _get_agent_label_text() -> String:
@@ -181,6 +212,13 @@ func _read_float_property(property_name: StringName, fallback: float) -> float:
 		return value
 	if value is int:
 		return float(value)
+	return fallback
+
+
+func _read_bool_property(property_name: StringName, fallback: bool) -> bool:
+	var value: Variant = _target.get(property_name)
+	if value is bool:
+		return value
 	return fallback
 
 

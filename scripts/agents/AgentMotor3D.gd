@@ -3,10 +3,26 @@ class_name AgentMotor3D
 
 const SteeringHelper := preload("res://scripts/steering/Steering.gd")
 
+enum SteeringMode {
+	WANDER,
+	SEEK,
+	ARRIVE,
+	FLEE,
+}
+
 @export_group("Movement")
 @export_range(0.01, 5.0, 0.01) var max_speed: float = 0.48
 @export_range(0.01, 5.0, 0.01) var max_force: float = 0.42
 @export_range(0.01, 20.0, 0.01) var mass: float = 1.0
+
+@export_group("Steering Test Modes")
+@export var steering_mode: SteeringMode = SteeringMode.WANDER
+@export var enable_keyboard_mode_switching: bool = true
+@export var seek_target_path: NodePath
+@export var arrive_target_path: NodePath
+@export var flee_threat_path: NodePath
+@export_range(0.05, 5.0, 0.01) var arrive_slowing_radius: float = 0.8
+@export var apply_home_tether_in_test_modes: bool = true
 
 @export_group("Wander")
 @export_range(0.0, 2.0, 0.01) var wander_strength: float = 0.86
@@ -31,9 +47,16 @@ var steering_force: Vector3 = Vector3.ZERO
 var final_velocity: Vector3 = Vector3.ZERO
 var home_position: Vector3 = Vector3.ZERO
 var current_wander_direction: Vector3 = Vector3.FORWARD
+var current_state: String = "WANDER"
+var debug_has_target: bool = false
+var debug_target_position: Vector3 = Vector3.ZERO
+var debug_target_name: String = ""
 
 var _elapsed_time: float = 0.0
 var _wander_seed: float = 0.0
+var _seek_target: Node3D
+var _arrive_target: Node3D
+var _flee_threat: Node3D
 
 
 func _ready() -> void:
@@ -42,6 +65,7 @@ func _ready() -> void:
 	current_wander_direction = _sample_wander_direction(0.0)
 	direction = current_wander_direction
 	target_direction = current_wander_direction
+	_resolve_target_nodes()
 
 
 func _process(delta: float) -> void:
@@ -50,6 +74,27 @@ func _process(delta: float) -> void:
 	_update_steering(delta)
 	_apply_motion(delta)
 	_update_facing(delta)
+
+
+func _unhandled_input(event: InputEvent) -> void:
+	if not enable_keyboard_mode_switching:
+		return
+
+	if event is InputEventKey and event.pressed and not event.echo:
+		match event.keycode:
+			KEY_1:
+				set_steering_mode(SteeringMode.WANDER)
+			KEY_2:
+				set_steering_mode(SteeringMode.SEEK)
+			KEY_3:
+				set_steering_mode(SteeringMode.ARRIVE)
+			KEY_4:
+				set_steering_mode(SteeringMode.FLEE)
+
+
+func set_steering_mode(mode: SteeringMode) -> void:
+	steering_mode = mode
+	current_state = _mode_to_string(steering_mode)
 
 
 func _update_wander_direction(delta: float) -> void:
@@ -62,12 +107,18 @@ func _update_wander_direction(delta: float) -> void:
 
 
 func _update_steering(delta: float) -> void:
-	var wander_desired_velocity: Vector3 = current_wander_direction * max_speed * wander_strength
-	var combined_desired_velocity: Vector3 = wander_desired_velocity
+	if _target_needs_resolve(seek_target_path, _seek_target) \
+			or _target_needs_resolve(arrive_target_path, _arrive_target) \
+			or _target_needs_resolve(flee_threat_path, _flee_threat):
+		_resolve_target_nodes()
+
+	current_state = _mode_to_string(steering_mode)
+	var combined_desired_velocity: Vector3 = _calculate_mode_desired_velocity()
+	var uses_home_tether: bool = steering_mode == SteeringMode.WANDER or apply_home_tether_in_test_modes
 
 	var distance_from_home: float = global_position.distance_to(home_position)
 	var tether_start: float = home_radius * 0.55
-	if distance_from_home > tether_start:
+	if uses_home_tether and distance_from_home > tether_start:
 		var tether_blend: float = clamp(
 			(distance_from_home - tether_start) / max(home_radius - tether_start, 0.001),
 			0.0,
@@ -82,9 +133,39 @@ func _update_steering(delta: float) -> void:
 		combined_desired_velocity += home_desired_velocity * tether_blend * home_tether_strength
 
 	desired_velocity = SteeringHelper.limit_vector(combined_desired_velocity, max_speed)
+	if desired_velocity.length_squared() > 0.0001:
+		target_direction = desired_velocity.normalized()
+
 	steering_force = SteeringHelper.limit_vector(desired_velocity - velocity, max_force)
 	acceleration = steering_force / max(mass, 0.001)
 	final_velocity = SteeringHelper.limit_vector(velocity + acceleration * delta, max_speed)
+
+
+func _calculate_mode_desired_velocity() -> Vector3:
+	_set_debug_target(null)
+
+	match steering_mode:
+		SteeringMode.SEEK:
+			if _seek_target:
+				_set_debug_target(_seek_target)
+				return SteeringHelper.seek(global_position, _seek_target.global_position, max_speed)
+		SteeringMode.ARRIVE:
+			if _arrive_target:
+				_set_debug_target(_arrive_target)
+				return SteeringHelper.arrive(
+					global_position,
+					_arrive_target.global_position,
+					max_speed,
+					arrive_slowing_radius
+				)
+		SteeringMode.FLEE:
+			if _flee_threat:
+				_set_debug_target(_flee_threat)
+				return SteeringHelper.flee(global_position, _flee_threat.global_position, max_speed)
+		SteeringMode.WANDER:
+			return current_wander_direction * max_speed * wander_strength
+
+	return current_wander_direction * max_speed * wander_strength
 
 
 func _apply_motion(delta: float) -> void:
@@ -144,3 +225,42 @@ func _seed_from_name() -> float:
 	var seed_text: String = "%s:%s" % [name, str(get_instance_id())]
 	var seed_value: int = abs(hash(seed_text)) % 10000
 	return float(seed_value) / 10000.0 * TAU
+
+
+func _resolve_target_nodes() -> void:
+	_seek_target = _get_node3d_or_null(seek_target_path)
+	_arrive_target = _get_node3d_or_null(arrive_target_path)
+	_flee_threat = _get_node3d_or_null(flee_threat_path)
+
+
+func _get_node3d_or_null(path: NodePath) -> Node3D:
+	if path == NodePath():
+		return null
+	return get_node_or_null(path) as Node3D
+
+
+func _target_needs_resolve(path: NodePath, target: Node3D) -> bool:
+	return path != NodePath() and not is_instance_valid(target)
+
+
+func _set_debug_target(target: Node3D) -> void:
+	debug_has_target = target != null
+	if target == null:
+		debug_target_position = Vector3.ZERO
+		debug_target_name = ""
+		return
+
+	debug_target_position = target.global_position
+	debug_target_name = target.name
+
+
+func _mode_to_string(mode: SteeringMode) -> String:
+	match mode:
+		SteeringMode.SEEK:
+			return "SEEK"
+		SteeringMode.ARRIVE:
+			return "ARRIVE"
+		SteeringMode.FLEE:
+			return "FLEE"
+		_:
+			return "WANDER"
