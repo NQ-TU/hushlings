@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/audio/AmbientAudioLoop.gd" id="1_ambient_audio"]
+
+[node name="AmbientAudioLoop" type="AudioStreamPlayer"]
+script = ExtResource("1_ambient_audio")
