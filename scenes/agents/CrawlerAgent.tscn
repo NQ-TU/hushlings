@@ -9,7 +9,7 @@
 
 [node name="CrawlerAgent" type="Node3D" unique_id=556334906 groups=["interest_entity"]]
 script = ExtResource("1_crawler_agent")
-max_speed = 0.38
+max_speed = 0.34
 max_force = 0.38
 mass = 1.15
 turn_rate_limit_enabled = true
@@ -33,6 +33,6 @@ label_height = 0.34
 agent_kind = "Crawler"
 movement_loop_stream = ExtResource("5_wrh4f")
 flee_stream = ExtResource("6_qyfpm")
-movement_volume_db = -21.0
-idle_volume_db = -33.0
+movement_volume_db = -18.5
+idle_volume_db = -31.0
 flee_volume_db = -17.0

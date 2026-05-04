@@ -123,6 +123,43 @@ static func alignment(
 	return average_velocity.normalized() * max_speed
 
 
+static func average_heading(
+	observer: Node3D,
+	neighbours: Array,
+	radius: float
+) -> Vector3:
+	if observer == null or radius <= 0.0001:
+		return Vector3.ZERO
+
+	var radius_sq: float = radius * radius
+	var average_heading_value: Vector3 = Vector3.ZERO
+	var count: int = 0
+	for candidate in neighbours:
+		var neighbour := candidate as Node3D
+		if neighbour == null or neighbour == observer:
+			continue
+
+		var distance_sq: float = observer.global_position.distance_squared_to(neighbour.global_position)
+		if distance_sq > radius_sq:
+			continue
+
+		var heading: Vector3 = _read_vector_property(neighbour, &"velocity")
+		if heading.length_squared() <= 0.0001:
+			heading = _read_vector_property(neighbour, &"current_wander_direction")
+		if heading.length_squared() <= 0.0001:
+			heading = _read_vector_property(neighbour, &"direction")
+		if heading.length_squared() <= 0.0001:
+			continue
+
+		average_heading_value += heading.normalized()
+		count += 1
+
+	if count == 0 or average_heading_value.length_squared() <= 0.0001:
+		return Vector3.ZERO
+
+	return average_heading_value.normalized()
+
+
 static func neighbour_count(observer: Node3D, neighbours: Array, radius: float) -> int:
 	if observer == null or radius <= 0.0001:
 		return 0

@@ -41,8 +41,12 @@ const FleeMemoryHelper := preload("res://scripts/agents/FleeMemory.gd")
 @export_range(0.0, 5.0, 0.01) var obstacle_avoidance_weight: float = 0.72
 
 @export_group("Player Interaction")
+@export var avoid_player_body: bool = true
+@export var player_group: StringName = &"player"
 @export var flee_from_player_hand_feelers: bool = true
 @export var player_hand_group: StringName = &"player_hand"
+@export_range(0.1, 3.0, 0.01) var player_keepout_radius: float = 0.85
+@export_range(0.0, 3.0, 0.01) var player_keepout_strength: float = 0.55
 @export_range(0.05, 5.0, 0.01) var player_hand_flee_memory_time: float = 1.1
 @export_range(0.1, 10.0, 0.01) var player_hand_flee_safe_radius: float = 1.0
 @export_range(0.0, 5.0, 0.01) var player_hand_flee_speed_scale: float = 1.75
@@ -105,6 +109,7 @@ func _process(delta: float) -> void:
 		if not _returning_home:
 			desired_velocity_for_frame = _apply_home_tether(desired_velocity_for_frame)
 
+	desired_velocity_for_frame += _calculate_player_keepout_velocity()
 	desired_velocity_for_frame += _calculate_obstacle_avoidance(desired_velocity_for_frame)
 	apply_desired_velocity(desired_velocity_for_frame, delta)
 	_update_visual()
@@ -184,6 +189,36 @@ func _calculate_obstacle_avoidance(input_desired_velocity: Vector3) -> Vector3:
 	debug_obstacle_hit_normal = result.get("hit_normal", Vector3.ZERO)
 	_handle_player_hand_feeler_hit(result)
 	return obstacle_avoidance_force
+
+
+func _calculate_player_keepout_velocity() -> Vector3:
+	if not avoid_player_body or not is_inside_tree() or player_keepout_radius <= 0.0:
+		return Vector3.ZERO
+
+	var nearest_player: Node3D
+	var nearest_distance_sq: float = player_keepout_radius * player_keepout_radius
+	for candidate in get_tree().get_nodes_in_group(player_group):
+		var player := candidate as Node3D
+		if player == null or player.is_in_group(player_hand_group):
+			continue
+
+		var distance_sq: float = global_position.distance_squared_to(player.global_position)
+		if distance_sq <= nearest_distance_sq:
+			nearest_player = player
+			nearest_distance_sq = distance_sq
+
+	if nearest_player == null:
+		return Vector3.ZERO
+
+	var distance: float = sqrt(nearest_distance_sq)
+	var pressure: float = 1.0 - clamp(distance / player_keepout_radius, 0.0, 1.0)
+	return PlayerPerceptionHelper.flee_velocity(
+		global_position,
+		nearest_player,
+		current_wander_direction,
+		max_speed,
+		player_keepout_strength * pressure
+	)
 
 
 func _handle_player_hand_feeler_hit(result: Dictionary) -> void:

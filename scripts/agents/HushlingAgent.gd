@@ -160,6 +160,9 @@ const HushlingVisualBoldScene := preload("res://scenes/visuals/HushlingVisual_Bo
 @export_range(0.01, 5.0, 0.01) var group_radius: float = 1.3
 @export_range(0.0, 5.0, 0.01) var cohesion_weight: float = 0.12
 @export_range(0.0, 5.0, 0.01) var alignment_weight: float = 0.05
+@export var flock_heading_enabled: bool = true
+@export_range(0.0, 1.0, 0.01) var flock_heading_weight: float = 0.28
+@export_range(1, 8, 1) var flock_heading_min_neighbours: int = 1
 @export var group_flee_enabled: bool = true
 @export_range(0.01, 5.0, 0.01) var group_flee_radius: float = 1.35
 @export_range(0.05, 5.0, 0.01) var group_flee_memory_time: float = 1.2
@@ -333,6 +336,8 @@ func _apply_debug_visibility() -> void:
 func _update_wander_direction(delta: float) -> void:
 	var sampled_direction: Vector3 = _home_return_direction() if _is_home_return_active() \
 			else _sample_wander_direction(_elapsed_time)
+	if not _is_home_return_active():
+		sampled_direction = _apply_flock_heading(sampled_direction)
 	var turn_rate: float = home_return_turn_degrees_per_second if _is_home_return_active() \
 			else wander_turn_degrees_per_second
 	current_wander_direction = _smooth_direction_change(
@@ -343,6 +348,33 @@ func _update_wander_direction(delta: float) -> void:
 		wander_forward_bias,
 		turn_rate
 	)
+
+
+func _apply_flock_heading(sampled_direction: Vector3) -> Vector3:
+	if not _can_apply_flock_heading():
+		return sampled_direction
+
+	var neighbours: Array = get_tree().get_nodes_in_group(neighbour_group)
+	var neighbour_count: int = BoidsHelper.neighbour_count(self, neighbours, group_radius)
+	if neighbour_count < flock_heading_min_neighbours:
+		return sampled_direction
+
+	var group_heading: Vector3 = BoidsHelper.average_heading(self, neighbours, group_radius)
+	if group_heading.length_squared() <= 0.0001:
+		return sampled_direction
+
+	var support: float = clamp(float(neighbour_count) / max(float(supported_group_size), 1.0), 0.0, 1.0)
+	var blend: float = clamp(flock_heading_weight * max(support, 0.35), 0.0, 1.0)
+	return _safe_direction(sampled_direction.lerp(group_heading, blend), sampled_direction)
+
+
+func _can_apply_flock_heading() -> bool:
+	return flock_heading_enabled \
+			and social_forces_enabled \
+			and is_inside_tree() \
+			and _autonomous_state != HushlingStateMachine.FLEE \
+			and _autonomous_state != HushlingStateMachine.STARTLED \
+			and _autonomous_state != HushlingStateMachine.OBSERVE
 
 
 func _update_idle_cadence(delta: float) -> void:

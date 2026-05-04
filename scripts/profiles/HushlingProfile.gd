@@ -129,6 +129,9 @@ class_name HushlingProfile
 @export_range(0.01, 5.0, 0.01) var group_radius: float = 1.3
 @export_range(0.0, 5.0, 0.01) var cohesion_weight: float = 0.12
 @export_range(0.0, 5.0, 0.01) var alignment_weight: float = 0.05
+@export var flock_heading_enabled: bool = true
+@export_range(0.0, 1.0, 0.01) var flock_heading_weight: float = 0.28
+@export_range(1, 8, 1) var flock_heading_min_neighbours: int = 1
 @export var group_flee_enabled: bool = true
 @export_range(0.01, 5.0, 0.01) var group_flee_radius: float = 1.35
 @export_range(0.05, 5.0, 0.01) var group_flee_memory_time: float = 1.2
