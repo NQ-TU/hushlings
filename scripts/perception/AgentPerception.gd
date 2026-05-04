@@ -1,6 +1,8 @@
 extends RefCounted
 class_name AgentPerception
 
+const EPSILON := 0.0001
+
 
 static func nearest_in_group(
 	observer: Node3D,
@@ -54,7 +56,7 @@ static func has_line_of_sight(
 	var target_position: Vector3 = target.global_position + target_offset
 	var to_target: Vector3 = target_position - origin
 	var distance: float = to_target.length()
-	if distance <= 0.0001:
+	if distance <= EPSILON:
 		return true
 
 	var direction: Vector3 = to_target / distance
@@ -90,7 +92,7 @@ static func is_target_in_fov(observer: Node3D, target: Node3D, fov_degrees: floa
 		return true
 
 	var to_target: Vector3 = target.global_position - observer.global_position
-	if to_target.length_squared() <= 0.0001:
+	if to_target.length_squared() <= EPSILON:
 		return true
 
 	var dot_to_target: float = clamp(get_forward(observer).dot(to_target.normalized()), -1.0, 1.0)
@@ -100,7 +102,7 @@ static func is_target_in_fov(observer: Node3D, target: Node3D, fov_degrees: floa
 
 static func get_forward(agent: Node3D) -> Vector3:
 	var direction_value: Variant = agent.get(&"direction")
-	if direction_value is Vector3 and direction_value.length_squared() > 0.0001:
+	if direction_value is Vector3 and direction_value.length_squared() > EPSILON:
 		return direction_value.normalized()
 
 	return (-agent.global_transform.basis.z).normalized()

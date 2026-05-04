@@ -6,6 +6,9 @@ const PlayerPerceptionHelper := preload("res://scripts/perception/PlayerPercepti
 const IdleCadenceHelper := preload("res://scripts/agents/IdleCadence.gd")
 const FleeMemoryHelper := preload("res://scripts/agents/FleeMemory.gd")
 
+const GROUP_INTEREST_ENTITY := &"interest_entity"
+const STATE_WANDER := "WANDER"
+
 @export_group("Crawler Wander")
 @export_range(0.0, 2.0, 0.01) var wander_strength: float = 0.98
 @export_range(0.05, 12.0, 0.01) var course_duration_min: float = 2.8
@@ -56,7 +59,7 @@ const FleeMemoryHelper := preload("res://scripts/agents/FleeMemory.gd")
 
 var home_position: Vector3 = Vector3.ZERO
 var current_wander_direction: Vector3 = Vector3.FORWARD
-var current_state: String = "WANDER"
+var current_state: String = STATE_WANDER
 var obstacle_avoidance_force: Vector3 = Vector3.ZERO
 var debug_obstacle_hit: bool = false
 var debug_obstacle_hit_position: Vector3 = Vector3.ZERO
@@ -76,8 +79,8 @@ var _player_hand_flee := FleeMemoryHelper.new()
 
 
 func _ready() -> void:
-	if not is_in_group(&"interest_entity"):
-		add_to_group(&"interest_entity")
+	if not is_in_group(GROUP_INTEREST_ENTITY):
+		add_to_group(GROUP_INTEREST_ENTITY)
 
 	home_position = global_position
 	_wander_seed = _make_instance_seed()
@@ -103,9 +106,12 @@ func _process(delta: float) -> void:
 		current_state = "FLEE"
 		desired_velocity_for_frame = _calculate_player_hand_flee_velocity()
 	else:
-		current_state = "IDLE" if debug_is_idle else "WANDER"
+		current_state = "IDLE" if debug_is_idle else STATE_WANDER
 		var idle_scale: float = idle_drift_scale if debug_is_idle else 1.0
-		desired_velocity_for_frame = current_wander_direction * max_speed * wander_strength * idle_scale
+		desired_velocity_for_frame = current_wander_direction \
+				* max_speed \
+				* wander_strength \
+				* idle_scale
 		if not _returning_home:
 			desired_velocity_for_frame = _apply_home_tether(desired_velocity_for_frame)
 

@@ -12,6 +12,10 @@ const HushlingProfileResource := preload("res://scripts/profiles/HushlingProfile
 const HushlingVisualTimidScene := preload("res://scenes/visuals/HushlingVisual_Timid.tscn")
 const HushlingVisualBoldScene := preload("res://scenes/visuals/HushlingVisual_Bold.tscn")
 
+const VISUAL_VARIANT_AUTO := "Auto"
+const VISUAL_VARIANT_TIMID := "Timid"
+const VISUAL_VARIANT_BOLD := "Bold"
+
 @export_group("Debug")
 @export var agent_debug_enabled: bool = true
 
@@ -19,156 +23,156 @@ const HushlingVisualBoldScene := preload("res://scenes/visuals/HushlingVisual_Bo
 @export var profile: HushlingProfileResource
 
 @export_group("Visual")
-@export_enum("Auto", "Timid", "Bold") var visual_variant: String = "Auto"
+@export_enum("Auto", "Timid", "Bold") var visual_variant: String = VISUAL_VARIANT_AUTO
 @export var visual_root_path: NodePath = ^"VisualRoot"
 
 @export_group("Behaviour")
-@export var autonomous_enabled: bool = true
-@export var use_group_perception: bool = true
-@export var interest_group: StringName = &"interest_entity"
-@export var threat_group: StringName = &"threat_entity"
+@export_storage var autonomous_enabled: bool = true
+@export_storage var use_group_perception: bool = true
+@export_storage var interest_group: StringName = &"interest_entity"
+@export_storage var threat_group: StringName = &"threat_entity"
 @export var interest_target_path: NodePath
 @export var threat_target_path: NodePath
 @export_range(0.05, 5.0, 0.01) var arrive_slowing_radius: float = 0.8
-@export_range(0.1, 10.0, 0.01) var awareness_radius: float = 2.0
-@export_range(0.1, 10.0, 0.01) var observe_distance: float = 0.65
-@export_range(0.05, 10.0, 0.01) var interest_flee_radius: float = 0.8
-@export_range(0.0, 5.0, 0.01) var interest_flee_clearance: float = 0.2
-@export_range(0.05, 10.0, 0.01) var flee_radius: float = 0.7
-@export_range(0.1, 10.0, 0.01) var flee_safe_radius: float = 1.35
-@export_range(0.05, 1.0, 0.01) var calm_speed_scale: float = 0.45
-@export_range(0.05, 1.0, 0.01) var observe_speed_limit_scale: float = 0.32
-@export_range(0.1, 10.0, 0.01) var follow_distance: float = 0.9
-@export_range(0.1, 10.0, 0.01) var follow_start_distance: float = 1.1
-@export_range(0.0, 2.0, 0.01) var follow_start_margin: float = 0.12
-@export_range(0.0, 5.0, 0.01) var follow_speed_scale: float = 0.34
-@export_range(0.0, 1.0, 0.01) var follow_curiosity_threshold: float = 0.34
-@export_range(0.0, 1.0, 0.01) var follow_confidence_threshold: float = 0.12
-@export_range(0.0, 5.0, 0.01) var flee_speed_scale: float = 1.0
+@export_storage var awareness_radius: float = 2.0
+@export_storage var observe_distance: float = 0.65
+@export_storage var interest_flee_radius: float = 0.8
+@export_storage var interest_flee_clearance: float = 0.2
+@export_storage var flee_radius: float = 0.7
+@export_storage var flee_safe_radius: float = 1.35
+@export_storage var calm_speed_scale: float = 0.45
+@export_storage var observe_speed_limit_scale: float = 0.32
+@export_storage var follow_distance: float = 0.9
+@export_storage var follow_start_distance: float = 1.1
+@export_storage var follow_start_margin: float = 0.12
+@export_storage var follow_speed_scale: float = 0.34
+@export_storage var follow_curiosity_threshold: float = 0.34
+@export_storage var follow_confidence_threshold: float = 0.12
+@export_storage var flee_speed_scale: float = 1.0
 
 @export_group("Flee Breakup")
-@export_range(0.0, 2.0, 0.01) var flee_breakup_strength: float = 0.38
-@export_range(0.0, 1.0, 0.01) var flee_breakup_sway_strength: float = 0.12
-@export_range(0.01, 2.0, 0.01) var flee_breakup_sway_frequency: float = 0.34
-@export_range(0.0, 1.0, 0.01) var flee_breakup_vertical_strength: float = 0.12
-@export_range(0.0, 3.0, 0.01) var flee_separation_multiplier: float = 1.35
-@export_range(0.0, 1.0, 0.01) var flee_cohesion_multiplier: float = 0.12
-@export_range(0.0, 1.0, 0.01) var flee_alignment_multiplier: float = 0.0
+@export_storage var flee_breakup_strength: float = 0.38
+@export_storage var flee_breakup_sway_strength: float = 0.12
+@export_storage var flee_breakup_sway_frequency: float = 0.34
+@export_storage var flee_breakup_vertical_strength: float = 0.12
+@export_storage var flee_separation_multiplier: float = 1.35
+@export_storage var flee_cohesion_multiplier: float = 0.12
+@export_storage var flee_alignment_multiplier: float = 0.0
 
 @export_group("Social Response")
-@export var social_flee_scaling_enabled: bool = true
-@export_range(1, 8, 1) var supported_group_size: int = 3
-@export_range(0.05, 10.0, 0.01) var isolated_interest_flee_radius: float = 1.6
-@export_range(0.05, 10.0, 0.01) var isolated_interest_gaze_flee_radius: float = 2.4
-@export_range(0.05, 10.0, 0.01) var isolated_threat_flee_radius: float = 1.4
-@export_range(0.1, 10.0, 0.01) var isolated_flee_safe_radius: float = 2.25
-@export_range(0.1, 8.0, 0.01) var regroup_radius: float = 2.0
-@export_range(0.0, 3.0, 0.01) var regroup_strength: float = 0.38
-@export_range(0.0, 1.0, 0.01) var regroup_loneliness_threshold: float = 0.45
-@export_range(0.0, 1.0, 0.01) var regroup_exit_loneliness: float = 0.22
-@export_range(0.05, 1.0, 0.01) var regroup_speed_scale: float = 0.34
+@export_storage var social_flee_scaling_enabled: bool = true
+@export_storage var supported_group_size: int = 3
+@export_storage var isolated_interest_flee_radius: float = 1.6
+@export_storage var isolated_interest_gaze_flee_radius: float = 2.4
+@export_storage var isolated_threat_flee_radius: float = 1.4
+@export_storage var isolated_flee_safe_radius: float = 2.25
+@export_storage var regroup_radius: float = 2.0
+@export_storage var regroup_strength: float = 0.38
+@export_storage var regroup_loneliness_threshold: float = 0.45
+@export_storage var regroup_exit_loneliness: float = 0.22
+@export_storage var regroup_speed_scale: float = 0.34
 
 @export_group("Visibility")
-@export var require_interest_los_to_observe: bool = true
-@export var use_raycast_line_of_sight: bool = true
-@export_flags_3d_physics var perception_los_collision_mask: int = 1
-@export_range(0.0, 0.5, 0.01) var perception_los_end_margin: float = 0.04
-@export_range(1.0, 360.0, 1.0) var interest_fov_degrees: float = 145.0
-@export var flee_if_interest_sees_agent: bool = true
-@export_range(1.0, 360.0, 1.0) var interest_gaze_fov_degrees: float = 115.0
-@export_range(0.05, 10.0, 0.01) var interest_gaze_flee_radius: float = 1.45
+@export_storage var require_interest_los_to_observe: bool = true
+@export_storage var use_raycast_line_of_sight: bool = true
+@export_storage var perception_los_collision_mask: int = 1
+@export_storage var perception_los_end_margin: float = 0.04
+@export_storage var interest_fov_degrees: float = 145.0
+@export_storage var flee_if_interest_sees_agent: bool = true
+@export_storage var interest_gaze_fov_degrees: float = 115.0
+@export_storage var interest_gaze_flee_radius: float = 1.45
 
 @export_group("Obstacle Avoidance")
-@export var obstacle_avoidance_enabled: bool = true
-@export_flags_3d_physics var obstacle_collision_mask: int = 1
-@export_range(0.05, 5.0, 0.01) var obstacle_feeler_length: float = 0.55
-@export_range(1.0, 85.0, 1.0) var obstacle_feeler_angle_degrees: float = 34.0
-@export_range(0.0, 5.0, 0.01) var obstacle_avoidance_weight: float = 0.82
+@export_storage var obstacle_avoidance_enabled: bool = true
+@export_storage var obstacle_collision_mask: int = 1
+@export_storage var obstacle_feeler_length: float = 0.55
+@export_storage var obstacle_feeler_angle_degrees: float = 34.0
+@export_storage var obstacle_avoidance_weight: float = 0.82
 
 @export_group("Player Interaction")
-@export var player_influence_enabled: bool = true
-@export var player_group: StringName = &"player"
-@export var player_hand_group: StringName = &"player_hand"
-@export var flee_from_player_hand_feelers: bool = true
-@export var observe_player_when_grouped: bool = true
-@export_range(1, 12, 1) var player_observe_min_group_size: int = 3
-@export_range(0.1, 10.0, 0.01) var player_observe_radius: float = 2.0
-@export_range(0.05, 5.0, 0.01) var player_hand_flee_memory_time: float = 1.3
-@export_range(0.1, 10.0, 0.01) var player_hand_flee_safe_radius: float = 1.15
-@export var startle_from_direct_player_gaze: bool = true
-@export_range(0.1, 10.0, 0.01) var player_gaze_range: float = 2.6
-@export_range(1.0, 45.0, 0.5) var player_dead_center_gaze_degrees: float = 8.0
-@export_range(0.0, 1.0, 0.01) var player_gaze_isolation_threshold: float = 0.65
-@export_range(0.05, 5.0, 0.01) var player_gaze_startled_duration: float = 1.0
-@export_range(0.1, 16.0, 0.1) var player_gaze_turn_response: float = 5.0
+@export_storage var player_influence_enabled: bool = true
+@export_storage var player_group: StringName = &"player"
+@export_storage var player_hand_group: StringName = &"player_hand"
+@export_storage var flee_from_player_hand_feelers: bool = true
+@export_storage var observe_player_when_grouped: bool = true
+@export_storage var player_observe_min_group_size: int = 3
+@export_storage var player_observe_radius: float = 2.0
+@export_storage var player_hand_flee_memory_time: float = 1.3
+@export_storage var player_hand_flee_safe_radius: float = 1.15
+@export_storage var startle_from_direct_player_gaze: bool = true
+@export_storage var player_gaze_range: float = 2.6
+@export_storage var player_dead_center_gaze_degrees: float = 8.0
+@export_storage var player_gaze_isolation_threshold: float = 0.65
+@export_storage var player_gaze_startled_duration: float = 1.0
+@export_storage var player_gaze_turn_response: float = 5.0
 
 @export_group("Internal Variables")
-@export_range(0.0, 1.0, 0.01) var fear: float = 0.0
-@export_range(0.0, 1.0, 0.01) var curiosity: float = 0.0
-@export_range(0.0, 1.0, 0.01) var confidence: float = 0.0
-@export_range(0.0, 1.0, 0.01) var loneliness: float = 0.0
-@export_range(0.0, 1.0, 0.01) var energy: float = 1.0
-@export_range(0.0, 3.0, 0.01) var fear_rise_rate: float = 1.2
-@export_range(0.0, 3.0, 0.01) var fear_decay_rate: float = 0.35
-@export_range(0.0, 3.0, 0.01) var curiosity_rise_rate: float = 0.55
-@export_range(0.0, 3.0, 0.01) var curiosity_decay_rate: float = 0.4
-@export_range(0.0, 3.0, 0.01) var confidence_rise_rate: float = 0.35
-@export_range(0.0, 3.0, 0.01) var confidence_decay_rate: float = 0.24
-@export_range(0.0, 3.0, 0.01) var loneliness_rise_rate: float = 0.38
-@export_range(0.0, 3.0, 0.01) var loneliness_decay_rate: float = 0.7
-@export_range(0.0, 3.0, 0.01) var energy_recovery_rate: float = 0.14
-@export_range(0.0, 3.0, 0.01) var energy_drain_rate: float = 0.18
-@export_range(0.0, 1.0, 0.01) var fear_flee_threshold: float = 0.72
-@export_range(0.0, 1.0, 0.01) var curiosity_observe_threshold: float = 0.22
-@export_range(0.0, 1.0, 0.01) var confidence_fear_resistance: float = 0.18
+@export_storage var fear: float = 0.0
+@export_storage var curiosity: float = 0.0
+@export_storage var confidence: float = 0.0
+@export_storage var loneliness: float = 0.0
+@export_storage var energy: float = 1.0
+@export_storage var fear_rise_rate: float = 1.2
+@export_storage var fear_decay_rate: float = 0.35
+@export_storage var curiosity_rise_rate: float = 0.55
+@export_storage var curiosity_decay_rate: float = 0.4
+@export_storage var confidence_rise_rate: float = 0.35
+@export_storage var confidence_decay_rate: float = 0.24
+@export_storage var loneliness_rise_rate: float = 0.38
+@export_storage var loneliness_decay_rate: float = 0.7
+@export_storage var energy_recovery_rate: float = 0.14
+@export_storage var energy_drain_rate: float = 0.18
+@export_storage var fear_flee_threshold: float = 0.72
+@export_storage var curiosity_observe_threshold: float = 0.22
+@export_storage var confidence_fear_resistance: float = 0.18
 
 @export_group("Wander")
-@export_range(0.0, 2.0, 0.01) var wander_strength: float = 0.86
-@export_range(0.01, 3.0, 0.01) var wander_frequency: float = 0.18
-@export_range(0.01, 10.0, 0.01) var wander_smoothing: float = 1.25
-@export_range(0.0, 1.0, 0.01) var vertical_wander_amount: float = 0.34
-@export_range(0.1, 5.0, 0.01) var vertical_wander_frequency_scale: float = 2.15
-@export_range(0.0, 1.0, 0.01) var lateral_wander_amount: float = 0.28
-@export_range(0.0, 0.95, 0.01) var wander_forward_bias: float = 0.62
-@export_range(1.0, 180.0, 1.0) var wander_turn_degrees_per_second: float = 34.0
+@export_storage var wander_strength: float = 0.86
+@export_storage var wander_frequency: float = 0.18
+@export_storage var wander_smoothing: float = 1.25
+@export_storage var vertical_wander_amount: float = 0.34
+@export_storage var vertical_wander_frequency_scale: float = 2.15
+@export_storage var lateral_wander_amount: float = 0.28
+@export_storage var wander_forward_bias: float = 0.62
+@export_storage var wander_turn_degrees_per_second: float = 34.0
 
 @export_group("Idle Cadence")
-@export var idle_cadence_enabled: bool = true
-@export_range(0.0, 1.0, 0.01) var idle_probability: float = 0.34
-@export_range(0.05, 8.0, 0.01) var idle_duration_min: float = 0.7
-@export_range(0.05, 8.0, 0.01) var idle_duration_max: float = 1.8
-@export_range(0.05, 12.0, 0.01) var move_duration_min: float = 1.4
-@export_range(0.05, 12.0, 0.01) var move_duration_max: float = 3.4
-@export_range(0.0, 0.3, 0.01) var idle_drift_scale: float = 0.05
+@export_storage var idle_cadence_enabled: bool = true
+@export_storage var idle_probability: float = 0.34
+@export_storage var idle_duration_min: float = 0.7
+@export_storage var idle_duration_max: float = 1.8
+@export_storage var move_duration_min: float = 1.4
+@export_storage var move_duration_max: float = 3.4
+@export_storage var idle_drift_scale: float = 0.05
 
 @export_group("Home Tether")
-@export_range(0.1, 10.0, 0.01) var home_radius: float = 1.25
-@export_range(0.0, 4.0, 0.01) var home_tether_strength: float = 0.72
-@export var use_home_bounds: bool = false
-@export var home_bounds_size: Vector3 = Vector3.ZERO
-@export_range(0.1, 0.95, 0.01) var home_return_inner_ratio: float = 0.68
-@export_range(0.05, 1.0, 0.01) var home_return_speed_scale: float = 0.5
-@export_range(1.0, 180.0, 1.0) var home_return_turn_degrees_per_second: float = 58.0
+@export_storage var home_radius: float = 1.25
+@export_storage var home_tether_strength: float = 0.72
+@export_storage var use_home_bounds: bool = false
+@export_storage var home_bounds_size: Vector3 = Vector3.ZERO
+@export_storage var home_return_inner_ratio: float = 0.68
+@export_storage var home_return_speed_scale: float = 0.5
+@export_storage var home_return_turn_degrees_per_second: float = 58.0
 
 @export_group("Social Boids")
-@export var social_forces_enabled: bool = true
-@export var separation_enabled: bool = true
-@export var neighbour_group: StringName = &"hushling"
-@export_range(0.01, 3.0, 0.01) var separation_radius: float = 0.38
-@export_range(0.0, 5.0, 0.01) var separation_weight: float = 0.85
-@export_range(0.0, 3.0, 0.01) var separation_prediction_time: float = 0.7
-@export_range(0.01, 5.0, 0.01) var group_radius: float = 1.3
-@export_range(0.0, 5.0, 0.01) var cohesion_weight: float = 0.12
-@export_range(0.0, 5.0, 0.01) var alignment_weight: float = 0.05
-@export var flock_heading_enabled: bool = true
-@export_range(0.0, 1.0, 0.01) var flock_heading_weight: float = 0.20
-@export_range(1, 8, 1) var flock_heading_min_neighbours: int = 1
-@export var group_flee_enabled: bool = true
-@export_range(0.01, 5.0, 0.01) var group_flee_radius: float = 1.35
-@export_range(0.05, 5.0, 0.01) var group_flee_memory_time: float = 1.2
+@export_storage var social_forces_enabled: bool = true
+@export_storage var separation_enabled: bool = true
+@export_storage var neighbour_group: StringName = &"hushling"
+@export_storage var separation_radius: float = 0.38
+@export_storage var separation_weight: float = 0.85
+@export_storage var separation_prediction_time: float = 0.7
+@export_storage var group_radius: float = 1.3
+@export_storage var cohesion_weight: float = 0.12
+@export_storage var alignment_weight: float = 0.05
+@export_storage var flock_heading_enabled: bool = true
+@export_storage var flock_heading_weight: float = 0.20
+@export_storage var flock_heading_min_neighbours: int = 1
+@export_storage var group_flee_enabled: bool = true
+@export_storage var group_flee_radius: float = 1.35
+@export_storage var group_flee_memory_time: float = 1.2
 
 @export_group("Individual Variation")
-@export_range(0.0, 1.0, 0.01) var per_agent_variation: float = 0.18
+@export_storage var per_agent_variation: float = 0.18
 
 var home_position: Vector3 = Vector3.ZERO
 var current_wander_direction: Vector3 = Vector3.FORWARD
@@ -304,16 +308,16 @@ func _replace_visual_root(visual_scene: PackedScene) -> Node:
 
 func _get_selected_visual_scene() -> PackedScene:
 	match _get_visual_variant_name():
-		"Bold":
+		VISUAL_VARIANT_BOLD:
 			return HushlingVisualBoldScene
-		"Timid":
+		VISUAL_VARIANT_TIMID:
 			return HushlingVisualTimidScene
 		_:
 			return null
 
 
 func _get_visual_variant_name() -> String:
-	if visual_variant != "Auto":
+	if visual_variant != VISUAL_VARIANT_AUTO:
 		return visual_variant
 
 	if profile == null:
@@ -322,9 +326,9 @@ func _get_visual_variant_name() -> String:
 	var profile_text: String = "%s %s" % [profile.resource_path, profile.resource_name]
 	profile_text = profile_text.to_lower()
 	if profile_text.contains("bold"):
-		return "Bold"
+		return VISUAL_VARIANT_BOLD
 	if profile_text.contains("timid"):
-		return "Timid"
+		return VISUAL_VARIANT_TIMID
 	return ""
 
 
@@ -355,7 +359,7 @@ func _apply_flock_heading(sampled_direction: Vector3) -> Vector3:
 	if not _can_apply_flock_heading():
 		return sampled_direction
 
-	var neighbours: Array = get_tree().get_nodes_in_group(neighbour_group)
+	var neighbours: Array = _get_neighbours()
 	var neighbour_count: int = BoidsHelper.neighbour_count(self, neighbours, group_radius)
 	if neighbour_count < flock_heading_min_neighbours:
 		return sampled_direction
@@ -451,7 +455,7 @@ func _calculate_regroup_velocity() -> Vector3:
 	if not social_forces_enabled or not is_inside_tree():
 		return Vector3.ZERO
 
-	var neighbours: Array = get_tree().get_nodes_in_group(neighbour_group)
+	var neighbours: Array = _get_neighbours()
 	if BoidsHelper.neighbour_count(self, neighbours, regroup_radius) <= 0:
 		return Vector3.ZERO
 
@@ -604,7 +608,7 @@ func _calculate_social_forces() -> Vector3:
 		_update_social_response_debug_values()
 		return Vector3.ZERO
 
-	var neighbours: Array = get_tree().get_nodes_in_group(neighbour_group)
+	var neighbours: Array = _get_neighbours()
 	var separation_multiplier: float = flee_separation_multiplier if _is_flee_state_active() else 1.0
 	var cohesion_multiplier: float = flee_cohesion_multiplier if _is_flee_state_active() else 1.0
 	var alignment_multiplier: float = flee_alignment_multiplier if _is_flee_state_active() else 1.0
@@ -707,11 +711,14 @@ func _refresh_neighbour_count() -> void:
 		debug_neighbour_count = 0
 		return
 
-	debug_neighbour_count = BoidsHelper.neighbour_count(
-		self,
-		get_tree().get_nodes_in_group(neighbour_group),
-		group_radius
-	)
+	debug_neighbour_count = BoidsHelper.neighbour_count(self, _get_neighbours(), group_radius)
+
+
+func _get_neighbours() -> Array:
+	if not is_inside_tree():
+		return []
+
+	return get_tree().get_nodes_in_group(neighbour_group)
 
 
 func _update_player_gaze_state() -> void:
@@ -1228,7 +1235,7 @@ func _find_group_flee_source() -> Node3D:
 
 	var nearest_source: Node3D
 	var nearest_distance_sq: float = group_flee_radius * group_flee_radius
-	for candidate in get_tree().get_nodes_in_group(neighbour_group):
+	for candidate in _get_neighbours():
 		var neighbour := candidate as Node3D
 		if neighbour == null or neighbour == self or not is_instance_valid(neighbour):
 			continue
@@ -1250,7 +1257,7 @@ func _find_group_flee_source() -> Node3D:
 
 
 func _get_group_flee_clear_distance(group_flee_source: Node3D) -> float:
-	for candidate in get_tree().get_nodes_in_group(neighbour_group):
+	for candidate in _get_neighbours():
 		var neighbour := candidate as Node3D
 		if neighbour == null or neighbour == self or not is_instance_valid(neighbour):
 			continue
@@ -1290,7 +1297,7 @@ func _has_regroup_target() -> bool:
 
 	return BoidsHelper.neighbour_count(
 		self,
-		get_tree().get_nodes_in_group(neighbour_group),
+		_get_neighbours(),
 		regroup_radius
 	) > 0
 

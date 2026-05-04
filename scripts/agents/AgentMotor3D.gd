@@ -3,6 +3,8 @@ class_name AgentMotor3D
 
 const SteeringHelper := preload("res://scripts/steering/Steering.gd")
 
+const EPSILON := 0.0001
+
 @export_group("Movement")
 @export_range(0.01, 5.0, 0.01) var max_speed: float = 0.48
 @export_range(0.01, 5.0, 0.01) var max_force: float = 0.42
@@ -29,11 +31,11 @@ var final_velocity: Vector3 = Vector3.ZERO
 
 func apply_desired_velocity(input_desired_velocity: Vector3, delta: float) -> void:
 	var requested_velocity: Vector3 = SteeringHelper.limit_vector(input_desired_velocity, max_speed)
-	if requested_velocity.length_squared() > 0.0001:
+	if requested_velocity.length_squared() > EPSILON:
 		requested_direction = requested_velocity.normalized()
 
 	desired_velocity = _apply_turn_rate_limit(requested_velocity, delta)
-	if desired_velocity.length_squared() > 0.0001:
+	if desired_velocity.length_squared() > EPSILON:
 		target_direction = desired_velocity.normalized()
 		direction = target_direction
 	else:
@@ -61,7 +63,7 @@ func _update_facing(delta: float) -> void:
 	if not face_movement_direction:
 		return
 
-	if velocity.length_squared() <= 0.0001:
+	if velocity.length_squared() <= EPSILON:
 		return
 
 	var facing_direction: Vector3 = direction if turn_rate_limit_enabled else velocity.normalized()
@@ -82,7 +84,7 @@ func _apply_turn_rate_limit(input_desired_velocity: Vector3, delta: float) -> Ve
 	if not turn_rate_limit_enabled:
 		turn_pressure = 0.0
 		return input_desired_velocity
-	if delta <= 0.0 or input_desired_velocity.length_squared() <= 0.0001:
+	if delta <= 0.0 or input_desired_velocity.length_squared() <= EPSILON:
 		turn_pressure = 0.0
 		return input_desired_velocity
 
@@ -92,7 +94,7 @@ func _apply_turn_rate_limit(input_desired_velocity: Vector3, delta: float) -> Ve
 
 	var angle_to_target: float = current_heading.angle_to(target_heading)
 	var max_turn: float = deg_to_rad(max_turn_degrees_per_second) * delta
-	if angle_to_target <= max_turn or angle_to_target <= 0.0001:
+	if angle_to_target <= max_turn or angle_to_target <= EPSILON:
 		turn_pressure = 0.0
 		return input_desired_velocity
 
@@ -103,7 +105,7 @@ func _apply_turn_rate_limit(input_desired_velocity: Vector3, delta: float) -> Ve
 
 func _rotate_direction_toward(current: Vector3, target: Vector3, max_angle: float) -> Vector3:
 	var axis: Vector3 = current.cross(target)
-	if axis.length_squared() <= 0.0001:
+	if axis.length_squared() <= EPSILON:
 		axis = _orthogonal_axis(current)
 	else:
 		axis = axis.normalized()
@@ -132,7 +134,7 @@ func _smooth_direction_change(
 
 	var max_turn: float = deg_to_rad(max_degrees_per_second) * delta
 	var turn_angle: float = current.angle_to(blended)
-	if turn_angle <= max_turn or turn_angle <= 0.0001:
+	if turn_angle <= max_turn or turn_angle <= EPSILON:
 		return blended
 
 	return _rotate_direction_toward(current, blended, max_turn)
@@ -140,9 +142,9 @@ func _smooth_direction_change(
 
 func _orthogonal_axis(direction_value: Vector3) -> Vector3:
 	var axis: Vector3 = Vector3.UP.cross(direction_value)
-	if axis.length_squared() <= 0.0001:
+	if axis.length_squared() <= EPSILON:
 		axis = Vector3.RIGHT.cross(direction_value)
-	if axis.length_squared() <= 0.0001:
+	if axis.length_squared() <= EPSILON:
 		return Vector3.UP
 	return axis.normalized()
 
@@ -158,7 +160,7 @@ func _basis_from_forward(forward: Vector3) -> Basis:
 	var z_axis: Vector3 = -_safe_direction(forward, Vector3.FORWARD)
 	var up_axis: Vector3 = Vector3.UP
 	var x_axis: Vector3 = up_axis.cross(z_axis)
-	if x_axis.length_squared() <= 0.0001:
+	if x_axis.length_squared() <= EPSILON:
 		x_axis = Vector3.RIGHT
 	else:
 		x_axis = x_axis.normalized()
@@ -169,18 +171,18 @@ func _basis_from_forward(forward: Vector3) -> Basis:
 
 func _basis_preserving_current_scale(rotation_basis: Basis) -> Basis:
 	var current_scale: Vector3 = global_transform.basis.get_scale()
-	if absf(current_scale.x) <= 0.0001:
+	if absf(current_scale.x) <= EPSILON:
 		current_scale.x = 1.0
-	if absf(current_scale.y) <= 0.0001:
+	if absf(current_scale.y) <= EPSILON:
 		current_scale.y = 1.0
-	if absf(current_scale.z) <= 0.0001:
+	if absf(current_scale.z) <= EPSILON:
 		current_scale.z = 1.0
 
 	return rotation_basis.orthonormalized().scaled(current_scale)
 
 
 func _safe_direction(value: Vector3, fallback: Vector3) -> Vector3:
-	if value.length_squared() <= 0.0001:
+	if value.length_squared() <= EPSILON:
 		return fallback.normalized()
 	return value.normalized()
 

@@ -3,6 +3,8 @@ class_name ObstacleAvoidance
 
 const AgentPerceptionHelper := preload("res://scripts/perception/AgentPerception.gd")
 
+const EPSILON := 0.0001
+
 
 static func calculate(
 	agent: Node3D,
@@ -25,7 +27,7 @@ static func calculate(
 
 	var forward: Vector3 = _safe_direction(input_velocity, AgentPerceptionHelper.get_forward(agent))
 	var right_axis: Vector3 = forward.cross(Vector3.UP)
-	if right_axis.length_squared() <= 0.0001:
+	if right_axis.length_squared() <= EPSILON:
 		right_axis = Vector3.RIGHT
 	else:
 		right_axis = right_axis.normalized()
@@ -70,7 +72,7 @@ static func calculate(
 			result["hit_normal"] = hit_normal
 			result["collider"] = hit.get("collider", null)
 
-	if combined_force.length_squared() > 0.0001:
+	if combined_force.length_squared() > EPSILON:
 		result["force"] = combined_force.normalized() * max_speed
 
 	return result
@@ -91,6 +93,6 @@ static func _build_exclude_rids(agent: Node3D, exclude: Array) -> Array[RID]:
 
 
 static func _safe_direction(value: Vector3, fallback: Vector3) -> Vector3:
-	if value.length_squared() <= 0.0001:
+	if value.length_squared() <= EPSILON:
 		return fallback.normalized()
 	return value.normalized()

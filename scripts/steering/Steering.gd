@@ -1,10 +1,13 @@
 extends RefCounted
 class_name Steering
 
+const EPSILON := 0.0001
+const MIN_BOX_EXTENT := 0.001
+
 
 static func seek(current_position: Vector3, target_position: Vector3, max_speed: float) -> Vector3:
 	var to_target: Vector3 = target_position - current_position
-	if to_target.length_squared() <= 0.0001:
+	if to_target.length_squared() <= EPSILON:
 		return Vector3.ZERO
 
 	return to_target.normalized() * max_speed
@@ -12,7 +15,7 @@ static func seek(current_position: Vector3, target_position: Vector3, max_speed:
 
 static func flee(current_position: Vector3, threat_position: Vector3, max_speed: float) -> Vector3:
 	var away_from_threat: Vector3 = current_position - threat_position
-	if away_from_threat.length_squared() <= 0.0001:
+	if away_from_threat.length_squared() <= EPSILON:
 		return Vector3.FORWARD * max_speed
 
 	return away_from_threat.normalized() * max_speed
@@ -26,11 +29,11 @@ static func arrive(
 ) -> Vector3:
 	var to_target: Vector3 = target_position - current_position
 	var distance: float = to_target.length()
-	if distance <= 0.0001:
+	if distance <= EPSILON:
 		return Vector3.ZERO
 
 	var target_speed: float = max_speed
-	if slowing_radius > 0.0001:
+	if slowing_radius > EPSILON:
 		target_speed = max_speed * clamp(distance / slowing_radius, 0.0, 1.0)
 
 	return to_target / distance * target_speed
@@ -63,7 +66,7 @@ static func apply_home_tether(
 		return input_velocity
 
 	var tether_blend: float = clamp(
-		(distance_from_home - tether_start) / max(home_radius - tether_start, 0.001),
+		(distance_from_home - tether_start) / max(home_radius - tether_start, MIN_BOX_EXTENT),
 		0.0,
 		1.0
 	)
@@ -84,7 +87,9 @@ static func apply_home_box_tether(
 		return input_velocity
 
 	var half_extents: Vector3 = home_bounds_size * 0.5
-	if half_extents.x <= 0.001 or half_extents.y <= 0.001 or half_extents.z <= 0.001:
+	if half_extents.x <= MIN_BOX_EXTENT \
+			or half_extents.y <= MIN_BOX_EXTENT \
+			or half_extents.z <= MIN_BOX_EXTENT:
 		return input_velocity
 
 	var offset: Vector3 = current_position - home_position
@@ -93,7 +98,7 @@ static func apply_home_box_tether(
 		_axis_box_correction(offset.y, half_extents.y, tether_start_ratio),
 		_axis_box_correction(offset.z, half_extents.z, tether_start_ratio)
 	)
-	if correction.length_squared() <= 0.0001:
+	if correction.length_squared() <= EPSILON:
 		return input_velocity
 
 	var tether_blend: float = clamp(correction.length(), 0.0, 1.0)
@@ -110,7 +115,9 @@ static func is_outside_home_area(
 ) -> bool:
 	if use_home_bounds:
 		var half_extents: Vector3 = home_bounds_size * 0.5
-		if half_extents.x <= 0.001 or half_extents.y <= 0.001 or half_extents.z <= 0.001:
+		if half_extents.x <= MIN_BOX_EXTENT \
+				or half_extents.y <= MIN_BOX_EXTENT \
+				or half_extents.z <= MIN_BOX_EXTENT:
 			return false
 
 		var offset: Vector3 = current_position - home_position
@@ -135,7 +142,9 @@ static func is_inside_home_area(
 	var ratio: float = clamp(inner_ratio, 0.1, 0.95)
 	if use_home_bounds:
 		var half_extents: Vector3 = home_bounds_size * 0.5 * ratio
-		if half_extents.x <= 0.001 or half_extents.y <= 0.001 or half_extents.z <= 0.001:
+		if half_extents.x <= MIN_BOX_EXTENT \
+				or half_extents.y <= MIN_BOX_EXTENT \
+				or half_extents.z <= MIN_BOX_EXTENT:
 			return true
 
 		var offset: Vector3 = current_position - home_position
@@ -157,14 +166,16 @@ static func home_return_direction(
 ) -> Vector3:
 	if use_home_bounds:
 		var half_extents: Vector3 = home_bounds_size * 0.5 * clamp(inner_ratio, 0.1, 0.95)
-		if half_extents.x > 0.001 and half_extents.y > 0.001 and half_extents.z > 0.001:
+		if half_extents.x > MIN_BOX_EXTENT \
+				and half_extents.y > MIN_BOX_EXTENT \
+				and half_extents.z > MIN_BOX_EXTENT:
 			var offset: Vector3 = current_position - home_position
 			var correction := Vector3(
 				_axis_inner_bounds_return(offset.x, half_extents.x),
 				_axis_inner_bounds_return(offset.y, half_extents.y),
 				_axis_inner_bounds_return(offset.z, half_extents.z)
 			)
-			if correction.length_squared() > 0.0001:
+			if correction.length_squared() > EPSILON:
 				return correction.normalized()
 
 	var to_home: Vector3 = home_position - current_position
@@ -177,7 +188,7 @@ static func _axis_box_correction(axis_offset: float, half_extent: float, tether_
 	if distance <= start:
 		return 0.0
 
-	var pressure: float = clamp((distance - start) / max(half_extent - start, 0.001), 0.0, 1.0)
+	var pressure: float = clamp((distance - start) / max(half_extent - start, MIN_BOX_EXTENT), 0.0, 1.0)
 	return -sign(axis_offset) * pressure
 
 
@@ -189,6 +200,6 @@ static func _axis_inner_bounds_return(axis_offset: float, inner_extent: float) -
 
 
 static func _safe_direction(value: Vector3, fallback: Vector3) -> Vector3:
-	if value.length_squared() <= 0.0001:
+	if value.length_squared() <= EPSILON:
 		return fallback.normalized()
 	return value.normalized()

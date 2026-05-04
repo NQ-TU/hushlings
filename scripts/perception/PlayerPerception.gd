@@ -3,6 +3,8 @@ class_name PlayerPerception
 
 const AgentPerceptionHelper := preload("res://scripts/perception/AgentPerception.gd")
 
+const EPSILON := 0.0001
+
 
 static func hand_from_feeler_result(result: Dictionary, player_hand_group: StringName) -> Node3D:
 	if not bool(result.get("hit", false)):
@@ -123,7 +125,7 @@ static func _is_observable_source(source: Node3D) -> bool:
 
 static func _is_source_looking_at(source: Node3D, target: Node3D, gaze_degrees: float) -> bool:
 	var to_target: Vector3 = target.global_position - source.global_position
-	if to_target.length_squared() <= 0.0001:
+	if to_target.length_squared() <= EPSILON:
 		return true
 
 	var dot_to_target: float = clamp(_get_forward(source).dot(to_target.normalized()), -1.0, 1.0)
@@ -134,7 +136,7 @@ static func _is_source_looking_at(source: Node3D, target: Node3D, gaze_degrees: 
 static func _get_forward(source: Node3D) -> Vector3:
 	if source.has_method(&"get_forward_direction"):
 		var forward_value: Variant = source.call(&"get_forward_direction")
-		if forward_value is Vector3 and forward_value.length_squared() > 0.0001:
+		if forward_value is Vector3 and forward_value.length_squared() > EPSILON:
 			return forward_value.normalized()
 
 	return (-source.global_transform.basis.z).normalized()
@@ -150,6 +152,6 @@ static func _read_float(node: Node, property_name: StringName, fallback: float) 
 
 
 static func _safe_direction(value: Vector3, fallback: Vector3) -> Vector3:
-	if value.length_squared() <= 0.0001:
+	if value.length_squared() <= EPSILON:
 		return fallback.normalized()
 	return value.normalized()

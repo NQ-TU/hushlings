@@ -1,6 +1,8 @@
 extends RefCounted
 class_name Boids
 
+const EPSILON := 0.0001
+
 
 static func separation(
 	observer: Node3D,
@@ -10,7 +12,7 @@ static func separation(
 	fallback_direction: Vector3 = Vector3.FORWARD,
 	prediction_time: float = 0.0
 ) -> Vector3:
-	if observer == null or radius <= 0.0001 or max_speed <= 0.0:
+	if observer == null or radius <= EPSILON or max_speed <= 0.0:
 		return Vector3.ZERO
 
 	var radius_sq: float = radius * radius
@@ -37,7 +39,7 @@ static func separation(
 		var offset: Vector3 = future_offset if future_distance_sq <= current_distance_sq else current_offset
 		var away_direction: Vector3
 		var closeness: float
-		if distance_sq <= 0.0001:
+		if distance_sq <= EPSILON:
 			away_direction = _safe_direction(fallback_direction, Vector3.FORWARD)
 			closeness = 1.0
 		else:
@@ -48,7 +50,7 @@ static func separation(
 		combined += away_direction * max(closeness, 0.05)
 		count += 1
 
-	if count == 0 or combined.length_squared() <= 0.0001:
+	if count == 0 or combined.length_squared() <= EPSILON:
 		return Vector3.ZERO
 
 	return combined.normalized() * max_speed
@@ -60,7 +62,7 @@ static func cohesion(
 	radius: float,
 	max_speed: float
 ) -> Vector3:
-	if observer == null or radius <= 0.0001 or max_speed <= 0.0:
+	if observer == null or radius <= EPSILON or max_speed <= 0.0:
 		return Vector3.ZERO
 
 	var radius_sq: float = radius * radius
@@ -83,7 +85,7 @@ static func cohesion(
 
 	center /= float(count)
 	var to_center: Vector3 = center - observer.global_position
-	if to_center.length_squared() <= 0.0001:
+	if to_center.length_squared() <= EPSILON:
 		return Vector3.ZERO
 
 	return to_center.normalized() * max_speed
@@ -95,7 +97,7 @@ static func alignment(
 	radius: float,
 	max_speed: float
 ) -> Vector3:
-	if observer == null or radius <= 0.0001 or max_speed <= 0.0:
+	if observer == null or radius <= EPSILON or max_speed <= 0.0:
 		return Vector3.ZERO
 
 	var radius_sq: float = radius * radius
@@ -117,7 +119,7 @@ static func alignment(
 		return Vector3.ZERO
 
 	average_velocity /= float(count)
-	if average_velocity.length_squared() <= 0.0001:
+	if average_velocity.length_squared() <= EPSILON:
 		return Vector3.ZERO
 
 	return average_velocity.normalized() * max_speed
@@ -128,7 +130,7 @@ static func average_heading(
 	neighbours: Array,
 	radius: float
 ) -> Vector3:
-	if observer == null or radius <= 0.0001:
+	if observer == null or radius <= EPSILON:
 		return Vector3.ZERO
 
 	var radius_sq: float = radius * radius
@@ -144,24 +146,24 @@ static func average_heading(
 			continue
 
 		var heading: Vector3 = _read_vector_property(neighbour, &"velocity")
-		if heading.length_squared() <= 0.0001:
+		if heading.length_squared() <= EPSILON:
 			heading = _read_vector_property(neighbour, &"current_wander_direction")
-		if heading.length_squared() <= 0.0001:
+		if heading.length_squared() <= EPSILON:
 			heading = _read_vector_property(neighbour, &"direction")
-		if heading.length_squared() <= 0.0001:
+		if heading.length_squared() <= EPSILON:
 			continue
 
 		average_heading_value += heading.normalized()
 		count += 1
 
-	if count == 0 or average_heading_value.length_squared() <= 0.0001:
+	if count == 0 or average_heading_value.length_squared() <= EPSILON:
 		return Vector3.ZERO
 
 	return average_heading_value.normalized()
 
 
 static func neighbour_count(observer: Node3D, neighbours: Array, radius: float) -> int:
-	if observer == null or radius <= 0.0001:
+	if observer == null or radius <= EPSILON:
 		return 0
 
 	var radius_sq: float = radius * radius
@@ -178,7 +180,7 @@ static func neighbour_count(observer: Node3D, neighbours: Array, radius: float) 
 
 
 static func _safe_direction(value: Vector3, fallback: Vector3) -> Vector3:
-	if value.length_squared() <= 0.0001:
+	if value.length_squared() <= EPSILON:
 		return fallback.normalized()
 	return value.normalized()
 
