@@ -2,18 +2,13 @@ extends "res://scripts/agents/AgentMotor3D.gd"
 class_name HushlingAgent
 
 const PerceptionHelper := preload("res://scripts/perception/AgentPerception.gd")
+const PlayerPerceptionHelper := preload("res://scripts/perception/PlayerPerception.gd")
 const BoidsHelper := preload("res://scripts/steering/Boids.gd")
 const ObstacleAvoidanceHelper := preload("res://scripts/steering/ObstacleAvoidance.gd")
+const IdleCadenceHelper := preload("res://scripts/agents/IdleCadence.gd")
+const FleeMemoryHelper := preload("res://scripts/agents/FleeMemory.gd")
 const HushlingStateMachine := preload("res://scripts/fsm/HushlingStateMachine.gd")
 const HushlingProfileResource := preload("res://scripts/profiles/HushlingProfile.gd")
-
-enum SteeringMode {
-	AUTO,
-	WANDER,
-	SEEK,
-	ARRIVE,
-	FLEE,
-}
 
 @export_group("Debug")
 @export var agent_debug_enabled: bool = true
@@ -21,22 +16,14 @@ enum SteeringMode {
 @export_group("Profile")
 @export var profile: HushlingProfileResource
 
-@export_group("Steering Test Modes")
-@export var steering_mode: SteeringMode = SteeringMode.AUTO
-@export var enable_keyboard_mode_switching: bool = true
-@export var seek_target_path: NodePath
-@export var arrive_target_path: NodePath
-@export var flee_threat_path: NodePath
-@export_range(0.05, 5.0, 0.01) var arrive_slowing_radius: float = 0.8
-@export var apply_home_tether_in_test_modes: bool = true
-
-@export_group("Minimal Autonomous Test")
+@export_group("Behaviour")
 @export var autonomous_enabled: bool = true
 @export var use_group_perception: bool = true
 @export var interest_group: StringName = &"interest_entity"
 @export var threat_group: StringName = &"threat_entity"
 @export var interest_target_path: NodePath
 @export var threat_target_path: NodePath
+@export_range(0.05, 5.0, 0.01) var arrive_slowing_radius: float = 0.8
 @export_range(0.1, 10.0, 0.01) var awareness_radius: float = 2.0
 @export_range(0.1, 10.0, 0.01) var observe_distance: float = 0.65
 @export_range(0.05, 10.0, 0.01) var interest_flee_radius: float = 0.8
@@ -44,8 +31,13 @@ enum SteeringMode {
 @export_range(0.05, 10.0, 0.01) var flee_radius: float = 0.7
 @export_range(0.1, 10.0, 0.01) var flee_safe_radius: float = 1.35
 @export_range(0.05, 1.0, 0.01) var calm_speed_scale: float = 0.45
-@export_range(0.0, 5.0, 0.01) var observe_speed_scale: float = 0.42
 @export_range(0.05, 1.0, 0.01) var observe_speed_limit_scale: float = 0.32
+@export_range(0.1, 10.0, 0.01) var follow_distance: float = 0.9
+@export_range(0.1, 10.0, 0.01) var follow_start_distance: float = 1.1
+@export_range(0.0, 2.0, 0.01) var follow_start_margin: float = 0.12
+@export_range(0.0, 5.0, 0.01) var follow_speed_scale: float = 0.34
+@export_range(0.0, 1.0, 0.01) var follow_curiosity_threshold: float = 0.34
+@export_range(0.0, 1.0, 0.01) var follow_confidence_threshold: float = 0.12
 @export_range(0.0, 5.0, 0.01) var flee_speed_scale: float = 1.0
 
 @export_group("Flee Breakup")
@@ -65,8 +57,9 @@ enum SteeringMode {
 @export_range(0.05, 10.0, 0.01) var isolated_threat_flee_radius: float = 1.4
 @export_range(0.1, 10.0, 0.01) var isolated_flee_safe_radius: float = 2.25
 @export_range(0.1, 8.0, 0.01) var regroup_radius: float = 2.0
-@export_range(0.0, 3.0, 0.01) var regroup_strength: float = 0.16
+@export_range(0.0, 3.0, 0.01) var regroup_strength: float = 0.38
 @export_range(0.0, 1.0, 0.01) var regroup_loneliness_threshold: float = 0.45
+@export_range(0.0, 1.0, 0.01) var regroup_exit_loneliness: float = 0.22
 @export_range(0.05, 1.0, 0.01) var regroup_speed_scale: float = 0.34
 
 @export_group("Visibility")
@@ -85,6 +78,20 @@ enum SteeringMode {
 @export_range(0.05, 5.0, 0.01) var obstacle_feeler_length: float = 0.55
 @export_range(1.0, 85.0, 1.0) var obstacle_feeler_angle_degrees: float = 34.0
 @export_range(0.0, 5.0, 0.01) var obstacle_avoidance_weight: float = 0.82
+
+@export_group("Player Interaction")
+@export var player_influence_enabled: bool = true
+@export var player_group: StringName = &"player"
+@export var player_hand_group: StringName = &"player_hand"
+@export var flee_from_player_hand_feelers: bool = true
+@export_range(0.05, 5.0, 0.01) var player_hand_flee_memory_time: float = 1.3
+@export_range(0.1, 10.0, 0.01) var player_hand_flee_safe_radius: float = 1.15
+@export var startle_from_direct_player_gaze: bool = true
+@export_range(0.1, 10.0, 0.01) var player_gaze_range: float = 2.6
+@export_range(1.0, 45.0, 0.5) var player_dead_center_gaze_degrees: float = 8.0
+@export_range(0.0, 1.0, 0.01) var player_gaze_isolation_threshold: float = 0.65
+@export_range(0.05, 5.0, 0.01) var player_gaze_startled_duration: float = 1.0
+@export_range(0.1, 16.0, 0.1) var player_gaze_turn_response: float = 5.0
 
 @export_group("Internal Variables")
 @export_range(0.0, 1.0, 0.01) var fear: float = 0.0
@@ -111,6 +118,15 @@ enum SteeringMode {
 @export_range(0.01, 3.0, 0.01) var wander_frequency: float = 0.18
 @export_range(0.01, 10.0, 0.01) var wander_smoothing: float = 1.25
 @export_range(0.0, 1.0, 0.01) var vertical_wander_amount: float = 0.24
+
+@export_group("Idle Cadence")
+@export var idle_cadence_enabled: bool = true
+@export_range(0.0, 1.0, 0.01) var idle_probability: float = 0.34
+@export_range(0.05, 8.0, 0.01) var idle_duration_min: float = 0.7
+@export_range(0.05, 8.0, 0.01) var idle_duration_max: float = 1.8
+@export_range(0.05, 12.0, 0.01) var move_duration_min: float = 1.4
+@export_range(0.05, 12.0, 0.01) var move_duration_max: float = 3.4
+@export_range(0.0, 0.3, 0.01) var idle_drift_scale: float = 0.05
 
 @export_group("Home Tether")
 @export_range(0.1, 10.0, 0.01) var home_radius: float = 1.25
@@ -152,6 +168,11 @@ var debug_interest_in_fov: bool = false
 var debug_interest_los_clear: bool = false
 var debug_interest_gaze_in_fov: bool = false
 var debug_interest_gaze_los_clear: bool = false
+var debug_player_hand_flee_active: bool = false
+var debug_player_gaze_direct: bool = false
+var debug_player_gaze_distance: float = -1.0
+var debug_player_gaze_source_name: String = ""
+var debug_is_idle: bool = false
 var debug_group_support: float = 0.0
 var debug_isolation_factor: float = 1.0
 var debug_effective_interest_flee_radius: float = 0.0
@@ -164,15 +185,15 @@ var debug_obstacle_hit_normal: Vector3 = Vector3.ZERO
 
 var _elapsed_time: float = 0.0
 var _wander_seed: float = 0.0
-var _seek_target: Node3D
-var _arrive_target: Node3D
-var _flee_threat: Node3D
 var _interest_target: Node3D
 var _threat_target: Node3D
 var _autonomous_flee_target: Node3D
 var _autonomous_flee_clear_distance: float = 0.0
 var _group_flee_source: Node3D
 var _group_flee_time_remaining: float = 0.0
+var _direct_player_gaze_source: Node3D
+var _startled_target: Node3D
+var _startled_time_remaining: float = 0.0
 var _autonomous_state: int = HushlingStateMachine.WANDER
 var _separation_fallback_direction: Vector3 = Vector3.RIGHT
 var _flee_breakup_axis: Vector3 = Vector3.RIGHT
@@ -180,60 +201,50 @@ var _speed_variation: float = 1.0
 var _wander_variation: float = 1.0
 var _cohesion_variation: float = 1.0
 var _alignment_variation: float = 1.0
+var _idle_cadence := IdleCadenceHelper.new()
+var _player_hand_flee := FleeMemoryHelper.new()
 
 
 func _ready() -> void:
 	_apply_profile()
 	home_position = global_position
-	_wander_seed = _seed_from_name()
+	_wander_seed = _make_instance_seed()
 	_setup_individual_variation()
+	_idle_cadence.configure(_wander_seed)
+	_idle_cadence.force_move(move_duration_min, move_duration_max)
 	current_wander_direction = _sample_wander_direction(0.0)
 	_separation_fallback_direction = _sample_wander_direction(0.37)
 	_flee_breakup_axis = _sample_wander_direction(1.19)
 	direction = current_wander_direction
 	target_direction = current_wander_direction
 	_apply_debug_visibility()
-	_resolve_target_nodes()
 
 
 func _process(delta: float) -> void:
 	_elapsed_time += delta
 	_update_group_flee_memory(delta)
+	_update_player_hand_flee_memory(delta)
+	_update_startled_timer(delta)
 	_update_wander_direction(delta)
-	_resolve_missing_target_nodes()
+	_refresh_neighbour_count()
 	_update_perception_targets()
+	_update_player_gaze_state()
 	_update_autonomous_state(delta)
+	_update_idle_cadence(delta)
 
 	var desired: Vector3 = _calculate_desired_velocity()
+	if _is_startled_state_active():
+		apply_desired_velocity(Vector3.ZERO, delta)
+		_update_startled_facing(delta)
+		return
+
 	desired = _apply_home_tether(desired)
-	desired += _calculate_regroup_force()
 	desired += _calculate_social_forces()
 	desired += _calculate_obstacle_avoidance(desired)
 	desired = SteeringHelper.limit_vector(desired, _get_active_speed_limit())
 	apply_desired_velocity(desired, delta)
-
-
-func _unhandled_input(event: InputEvent) -> void:
-	if not enable_keyboard_mode_switching:
-		return
-
-	if event is InputEventKey and event.pressed and not event.echo:
-		match event.keycode:
-			KEY_0:
-				set_steering_mode(SteeringMode.AUTO)
-			KEY_1:
-				set_steering_mode(SteeringMode.WANDER)
-			KEY_2:
-				set_steering_mode(SteeringMode.SEEK)
-			KEY_3:
-				set_steering_mode(SteeringMode.ARRIVE)
-			KEY_4:
-				set_steering_mode(SteeringMode.FLEE)
-
-
-func set_steering_mode(mode: SteeringMode) -> void:
-	steering_mode = mode
-	_update_current_state_label()
+	if _is_observe_state_active():
+		_update_target_facing(_interest_target, delta)
 
 
 func _apply_profile() -> void:
@@ -254,47 +265,55 @@ func _update_wander_direction(delta: float) -> void:
 	current_wander_direction = _safe_direction(current_wander_direction, Vector3.FORWARD)
 
 
+func _update_idle_cadence(delta: float) -> void:
+	if not _can_apply_idle_cadence():
+		_idle_cadence.force_move(move_duration_min, move_duration_max)
+		debug_is_idle = false
+		return
+
+	debug_is_idle = _idle_cadence.update(
+		delta,
+		idle_cadence_enabled,
+		idle_probability,
+		idle_duration_min,
+		idle_duration_max,
+		move_duration_min,
+		move_duration_max
+	)
+
+
+func _can_apply_idle_cadence() -> bool:
+	return _autonomous_state == HushlingStateMachine.WANDER
+
+
 func _calculate_desired_velocity() -> Vector3:
 	_set_debug_target(null)
 	_update_current_state_label()
-
-	match steering_mode:
-		SteeringMode.SEEK:
-			if _seek_target:
-				_set_debug_target(_seek_target)
-				return SteeringHelper.seek(global_position, _seek_target.global_position, max_speed)
-		SteeringMode.ARRIVE:
-			if _arrive_target:
-				_set_debug_target(_arrive_target)
-				return SteeringHelper.arrive(
-					global_position,
-					_arrive_target.global_position,
-					max_speed,
-					arrive_slowing_radius
-				)
-		SteeringMode.FLEE:
-			if _flee_threat:
-				_set_debug_target(_flee_threat)
-				return _calculate_flee_velocity(_flee_threat)
-		SteeringMode.AUTO:
-			return _calculate_autonomous_desired_velocity()
-		SteeringMode.WANDER:
-			return _calculate_wander_velocity()
-
-	return _calculate_wander_velocity()
+	return _calculate_autonomous_desired_velocity()
 
 
 func _calculate_autonomous_desired_velocity() -> Vector3:
+	regroup_force = Vector3.ZERO
 	match _autonomous_state:
 		HushlingStateMachine.FLEE:
 			var flee_target: Node3D = _get_autonomous_flee_target()
 			if flee_target:
 				_set_debug_target(flee_target)
 				return _calculate_flee_velocity(flee_target)
+		HushlingStateMachine.STARTLED:
+			if _startled_target:
+				_set_debug_target(_startled_target)
+			return Vector3.ZERO
+		HushlingStateMachine.REGROUP:
+			return _calculate_regroup_velocity()
 		HushlingStateMachine.OBSERVE:
 			if _interest_target:
 				_set_debug_target(_interest_target)
-				return _calculate_observe_velocity(_interest_target.global_position)
+				return _calculate_observe_velocity()
+		HushlingStateMachine.FOLLOW:
+			if _interest_target:
+				_set_debug_target(_interest_target)
+				return _calculate_follow_velocity(_interest_target.global_position)
 		HushlingStateMachine.WANDER:
 			return _calculate_wander_velocity()
 
@@ -302,21 +321,50 @@ func _calculate_autonomous_desired_velocity() -> Vector3:
 
 
 func _calculate_wander_velocity() -> Vector3:
-	return current_wander_direction * max_speed * wander_strength * _wander_variation
+	var idle_scale: float = idle_drift_scale if debug_is_idle else 1.0
+	return current_wander_direction * max_speed * wander_strength * _wander_variation * idle_scale
 
 
-func _calculate_observe_velocity(target_position: Vector3) -> Vector3:
+func _calculate_regroup_velocity() -> Vector3:
+	regroup_force = Vector3.ZERO
+	if not social_forces_enabled or not is_inside_tree():
+		return Vector3.ZERO
+
+	var neighbours: Array = get_tree().get_nodes_in_group(neighbour_group)
+	if BoidsHelper.neighbour_count(self, neighbours, regroup_radius) <= 0:
+		return Vector3.ZERO
+
+	var regroup_velocity: Vector3 = BoidsHelper.cohesion(
+		self,
+		neighbours,
+		regroup_radius,
+		max_speed * regroup_speed_scale
+	)
+	var loneliness_factor: float = clamp(
+		inverse_lerp(regroup_exit_loneliness, regroup_loneliness_threshold, loneliness),
+		0.0,
+		1.0
+	)
+	regroup_force = regroup_velocity * regroup_strength * max(loneliness_factor, 0.25)
+	return regroup_force
+
+
+func _calculate_observe_velocity() -> Vector3:
+	return Vector3.ZERO
+
+
+func _calculate_follow_velocity(target_position: Vector3) -> Vector3:
 	var to_target: Vector3 = target_position - global_position
 	var distance_to_target: float = to_target.length()
 	if distance_to_target <= 0.0001:
 		return Vector3.ZERO
 
 	var from_target: Vector3 = -to_target / distance_to_target
-	var stand_off_position: Vector3 = target_position + from_target * observe_distance
+	var stand_off_position: Vector3 = target_position + from_target * follow_distance
 	return SteeringHelper.arrive(
 		global_position,
 		stand_off_position,
-		max_speed * observe_speed_scale,
+		max_speed * follow_speed_scale,
 		arrive_slowing_radius
 	)
 
@@ -355,33 +403,20 @@ func _apply_home_tether(input_desired_velocity: Vector3) -> Vector3:
 	if not _should_apply_home_tether():
 		return input_desired_velocity
 
-	var distance_from_home: float = global_position.distance_to(home_position)
-	var tether_start: float = home_radius * 0.55
-	if distance_from_home <= tether_start:
-		return input_desired_velocity
-
-	var tether_blend: float = clamp(
-		(distance_from_home - tether_start) / max(home_radius - tether_start, 0.001),
-		0.0,
-		1.0
-	)
-	var home_desired_velocity: Vector3 = SteeringHelper.arrive(
+	return SteeringHelper.apply_home_tether(
 		global_position,
 		home_position,
+		input_desired_velocity,
 		max_speed,
-		home_radius
+		home_radius,
+		home_tether_strength
 	)
-	return input_desired_velocity + home_desired_velocity * tether_blend * home_tether_strength
 
 
 func _should_apply_home_tether() -> bool:
-	if steering_mode == SteeringMode.AUTO:
-		return _autonomous_state != HushlingStateMachine.FLEE
-
-	if steering_mode == SteeringMode.WANDER:
-		return true
-
-	return apply_home_tether_in_test_modes
+	return _autonomous_state != HushlingStateMachine.FLEE \
+			and _autonomous_state != HushlingStateMachine.STARTLED \
+			and _autonomous_state != HushlingStateMachine.OBSERVE
 
 
 func _calculate_social_forces() -> Vector3:
@@ -397,6 +432,13 @@ func _calculate_social_forces() -> Vector3:
 	var separation_multiplier: float = flee_separation_multiplier if _is_flee_state_active() else 1.0
 	var cohesion_multiplier: float = flee_cohesion_multiplier if _is_flee_state_active() else 1.0
 	var alignment_multiplier: float = flee_alignment_multiplier if _is_flee_state_active() else 1.0
+	if _is_observe_state_active():
+		separation_multiplier *= 0.7
+		cohesion_multiplier = 0.0
+		alignment_multiplier = 0.0
+	elif _is_regroup_state_active():
+		cohesion_multiplier = 0.0
+		alignment_multiplier *= 0.5
 	if separation_enabled:
 		separation_force = BoidsHelper.separation(
 			self,
@@ -426,31 +468,6 @@ func _calculate_social_forces() -> Vector3:
 	return separation_force + cohesion_force + alignment_force
 
 
-func _calculate_regroup_force() -> Vector3:
-	regroup_force = Vector3.ZERO
-	if not social_forces_enabled or not is_inside_tree():
-		return Vector3.ZERO
-	if _is_flee_state_active() or loneliness < regroup_loneliness_threshold:
-		return Vector3.ZERO
-
-	var neighbours: Array = get_tree().get_nodes_in_group(neighbour_group)
-	if BoidsHelper.neighbour_count(self, neighbours, regroup_radius) <= 0:
-		return Vector3.ZERO
-
-	var loneliness_factor: float = inverse_lerp(regroup_loneliness_threshold, 1.0, loneliness)
-	var regroup_velocity: Vector3 = BoidsHelper.cohesion(
-		self,
-		neighbours,
-		regroup_radius,
-		max_speed * regroup_speed_scale
-	)
-	regroup_force = regroup_velocity \
-			* regroup_strength \
-			* clamp(loneliness_factor, 0.0, 1.0) \
-			* max(_get_isolation_factor(), 0.25)
-	return regroup_force
-
-
 func _calculate_obstacle_avoidance(input_desired_velocity: Vector3) -> Vector3:
 	obstacle_avoidance_force = Vector3.ZERO
 	debug_obstacle_hit = false
@@ -472,7 +489,111 @@ func _calculate_obstacle_avoidance(input_desired_velocity: Vector3) -> Vector3:
 	debug_obstacle_hit = bool(result.get("hit", false))
 	debug_obstacle_hit_position = result.get("hit_position", Vector3.ZERO)
 	debug_obstacle_hit_normal = result.get("hit_normal", Vector3.ZERO)
+	_handle_player_hand_feeler_hit(result)
 	return obstacle_avoidance_force
+
+
+func _handle_player_hand_feeler_hit(result: Dictionary) -> void:
+	if not player_influence_enabled or not flee_from_player_hand_feelers:
+		return
+
+	var hand := PlayerPerceptionHelper.hand_from_feeler_result(result, player_hand_group)
+	if hand == null:
+		return
+
+	_player_hand_flee.trigger(hand, player_hand_flee_memory_time)
+	debug_player_hand_flee_active = true
+
+
+func _update_player_hand_flee_memory(delta: float) -> void:
+	_player_hand_flee.update(delta, global_position, player_hand_flee_safe_radius)
+	debug_player_hand_flee_active = _is_player_hand_flee_active()
+
+
+func _is_player_hand_flee_active() -> bool:
+	return _player_hand_flee.is_active()
+
+
+func _update_startled_timer(delta: float) -> void:
+	if _startled_time_remaining <= 0.0:
+		return
+
+	_startled_time_remaining = max(_startled_time_remaining - delta, 0.0)
+
+
+func _refresh_neighbour_count() -> void:
+	if not social_forces_enabled or not is_inside_tree():
+		debug_neighbour_count = 0
+		return
+
+	debug_neighbour_count = BoidsHelper.neighbour_count(
+		self,
+		get_tree().get_nodes_in_group(neighbour_group),
+		group_radius
+	)
+
+
+func _update_player_gaze_state() -> void:
+	debug_player_gaze_direct = false
+	debug_player_gaze_distance = -1.0
+	debug_player_gaze_source_name = ""
+	_direct_player_gaze_source = null
+
+	if not player_influence_enabled or not startle_from_direct_player_gaze or not is_inside_tree():
+		return
+	if _get_isolation_factor() < player_gaze_isolation_threshold:
+		return
+	if _is_flee_state_active():
+		return
+
+	var los_collision_mask: int = perception_los_collision_mask if use_raycast_line_of_sight else 0
+	_direct_player_gaze_source = PlayerPerceptionHelper.find_direct_gaze_source(
+		self,
+		player_group,
+		player_hand_group,
+		player_gaze_range,
+		player_dead_center_gaze_degrees,
+		los_collision_mask,
+		perception_los_end_margin
+	)
+	if _direct_player_gaze_source == null:
+		return
+
+	debug_player_gaze_direct = true
+	debug_player_gaze_distance = global_position.distance_to(_direct_player_gaze_source.global_position)
+	debug_player_gaze_source_name = _direct_player_gaze_source.name
+
+
+func _should_startle_from_player_gaze() -> bool:
+	return debug_player_gaze_direct and _direct_player_gaze_source != null
+
+
+func _is_startled_state_active() -> bool:
+	return _autonomous_state == HushlingStateMachine.STARTLED
+
+
+func _update_startled_facing(delta: float) -> void:
+	_update_target_facing(_startled_target, delta)
+
+
+func _update_target_facing(target: Node3D, delta: float) -> void:
+	if not is_instance_valid(target):
+		return
+
+	var to_target: Vector3 = target.global_position - global_position
+	if to_target.length_squared() <= 0.0001:
+		return
+
+	var face_direction: Vector3 = to_target.normalized()
+	direction = face_direction
+	target_direction = face_direction
+	var target_basis: Basis = _basis_from_forward(face_direction)
+	var rotation_alpha: float = 1.0 - exp(-player_gaze_turn_response * delta)
+	var current_quat: Quaternion = global_transform.basis.get_rotation_quaternion()
+	var target_quat: Quaternion = target_basis.get_rotation_quaternion()
+	var next_transform: Transform3D = global_transform
+	next_transform.basis = Basis(current_quat.slerp(target_quat, rotation_alpha)).orthonormalized()
+	global_transform = next_transform
 
 
 func _update_autonomous_state(delta: float) -> void:
@@ -480,11 +601,18 @@ func _update_autonomous_state(delta: float) -> void:
 	debug_threat_distance = _distance_to_or_negative(_threat_target)
 	debug_interest_visible = _can_observe_interest_target()
 	debug_interest_sees_agent = _interest_target_has_los_to_agent()
+	debug_player_hand_flee_active = _is_player_hand_flee_active()
 	_update_social_response_debug_values()
 	_update_internal_variables(delta)
 
 	if not autonomous_enabled:
 		return
+
+	if _autonomous_state == HushlingStateMachine.STARTLED:
+		if _startled_time_remaining > 0.0 and not _is_player_hand_flee_active():
+			return
+		_startled_target = null
+		_autonomous_state = HushlingStateMachine.WANDER
 
 	if _autonomous_state == HushlingStateMachine.FLEE:
 		var flee_target: Node3D = _get_autonomous_flee_target()
@@ -500,8 +628,14 @@ func _update_autonomous_state(delta: float) -> void:
 	match HushlingStateMachine.choose_state(_autonomous_state, facts):
 		HushlingStateMachine.FLEE:
 			_enter_flee_state(group_flee_source)
+		HushlingStateMachine.STARTLED:
+			_enter_startled_state()
+		HushlingStateMachine.FOLLOW:
+			_autonomous_state = HushlingStateMachine.FOLLOW
 		HushlingStateMachine.OBSERVE:
 			_autonomous_state = HushlingStateMachine.OBSERVE
+		HushlingStateMachine.REGROUP:
+			_autonomous_state = HushlingStateMachine.REGROUP
 		_:
 			_autonomous_state = HushlingStateMachine.WANDER
 
@@ -521,14 +655,31 @@ func _build_state_facts(flee_target: Node3D = null, group_flee_source: Node3D = 
 		"awareness_radius": awareness_radius,
 		"curiosity": curiosity,
 		"curiosity_observe_threshold": curiosity_observe_threshold,
+		"confidence": confidence,
+		"loneliness": loneliness,
+		"follow_distance": follow_distance,
+		"follow_start_distance": follow_start_distance,
+		"follow_start_margin": follow_start_margin,
+		"follow_curiosity_threshold": follow_curiosity_threshold,
+		"follow_confidence_threshold": follow_confidence_threshold,
+		"has_regroup_target": _has_regroup_target(),
+		"regroup_loneliness_threshold": regroup_loneliness_threshold,
+		"regroup_exit_loneliness": regroup_exit_loneliness,
 		"effective_fear": _get_effective_fear(),
 		"fear_flee_threshold": fear_flee_threshold,
 		"group_flee_active": group_flee_source != null,
+		"player_hand_flee_active": _is_player_hand_flee_active(),
+		"player_gaze_startle_active": _should_startle_from_player_gaze(),
+		"startled_time_remaining": _startled_time_remaining,
 	}
 
 
 func _enter_flee_state(group_flee_source: Node3D = null) -> void:
-	if _threat_target and debug_threat_distance <= _get_effective_threat_flee_radius():
+	if _is_player_hand_flee_active():
+		_clear_group_flee_memory()
+		_autonomous_flee_clear_distance = player_hand_flee_safe_radius
+		_autonomous_flee_target = _player_hand_flee.target
+	elif _threat_target and debug_threat_distance <= _get_effective_threat_flee_radius():
 		_clear_group_flee_memory()
 		_autonomous_flee_clear_distance = _get_effective_flee_safe_radius(_threat_target)
 		_autonomous_flee_target = _threat_target
@@ -549,6 +700,18 @@ func _enter_flee_state(group_flee_source: Node3D = null) -> void:
 		return
 
 	_autonomous_state = HushlingStateMachine.FLEE
+
+
+func _enter_startled_state() -> void:
+	if _direct_player_gaze_source == null:
+		return
+
+	_clear_group_flee_memory()
+	_autonomous_flee_target = null
+	_autonomous_flee_clear_distance = 0.0
+	_startled_target = _direct_player_gaze_source
+	_startled_time_remaining = player_gaze_startled_duration
+	_autonomous_state = HushlingStateMachine.STARTLED
 
 
 func _update_internal_variables(delta: float) -> void:
@@ -590,6 +753,12 @@ func _move_emotion_toward(
 
 func _get_fear_target() -> float:
 	var target_fear: float = 0.0
+
+	if _is_player_hand_flee_active():
+		target_fear = max(target_fear, 1.0)
+
+	if _is_startled_state_active():
+		target_fear = max(target_fear, 0.64)
 
 	if _autonomous_state == HushlingStateMachine.FLEE or _group_flee_time_remaining > 0.0:
 		target_fear = max(target_fear, 0.72)
@@ -650,6 +819,8 @@ func _get_loneliness_target() -> float:
 func _get_energy_target() -> float:
 	if _autonomous_state == HushlingStateMachine.FLEE:
 		return 0.55
+	if _autonomous_state == HushlingStateMachine.STARTLED:
+		return 0.7
 	return 1.0
 
 
@@ -720,24 +891,10 @@ func _update_social_response_debug_values() -> void:
 
 
 func _update_current_state_label() -> void:
-	if steering_mode != SteeringMode.AUTO:
-		current_state = _mode_to_string(steering_mode)
-		return
-
-	current_state = HushlingStateMachine.state_name(_autonomous_state)
-
-
-func _resolve_missing_target_nodes() -> void:
-	if _target_needs_resolve(seek_target_path, _seek_target) \
-			or _target_needs_resolve(arrive_target_path, _arrive_target) \
-			or _target_needs_resolve(flee_threat_path, _flee_threat):
-		_resolve_target_nodes()
-
-
-func _resolve_target_nodes() -> void:
-	_seek_target = _get_node3d_or_null(seek_target_path)
-	_arrive_target = _get_node3d_or_null(arrive_target_path)
-	_flee_threat = _get_node3d_or_null(flee_threat_path)
+	if _autonomous_state == HushlingStateMachine.WANDER and debug_is_idle:
+		current_state = "IDLE"
+	else:
+		current_state = HushlingStateMachine.state_name(_autonomous_state)
 
 
 func _update_perception_targets() -> void:
@@ -768,10 +925,6 @@ func _get_node3d_or_null(path: NodePath) -> Node3D:
 	return get_node_or_null(path) as Node3D
 
 
-func _target_needs_resolve(path: NodePath, target: Node3D) -> bool:
-	return path != NodePath() and not is_instance_valid(target)
-
-
 func _set_debug_target(target: Node3D) -> void:
 	debug_has_target = target != null
 	if target == null:
@@ -792,10 +945,15 @@ func is_fleeing() -> bool:
 
 
 func _is_flee_state_active() -> bool:
-	if steering_mode == SteeringMode.FLEE:
-		return true
+	return _autonomous_state == HushlingStateMachine.FLEE
 
-	return steering_mode == SteeringMode.AUTO and _autonomous_state == HushlingStateMachine.FLEE
+
+func _is_observe_state_active() -> bool:
+	return _autonomous_state == HushlingStateMachine.OBSERVE
+
+
+func _is_regroup_state_active() -> bool:
+	return _autonomous_state == HushlingStateMachine.REGROUP
 
 
 func is_propagating_flee() -> bool:
@@ -875,19 +1033,36 @@ func _clear_group_flee_memory() -> void:
 	_group_flee_time_remaining = 0.0
 
 
+func _has_regroup_target() -> bool:
+	if not social_forces_enabled or not is_inside_tree():
+		return false
+
+	return BoidsHelper.neighbour_count(
+		self,
+		get_tree().get_nodes_in_group(neighbour_group),
+		regroup_radius
+	) > 0
+
+
 func _get_autonomous_flee_target() -> Node3D:
+	if _is_player_hand_flee_active():
+		return _player_hand_flee.target
+
 	if is_instance_valid(_autonomous_flee_target):
 		return _autonomous_flee_target
 
 	if _threat_target:
 		return _threat_target
 
-	return _flee_threat
+	return null
 
 
 func _get_flee_safe_distance(flee_target: Node3D) -> float:
 	if _autonomous_flee_clear_distance > 0.0:
 		return _autonomous_flee_clear_distance
+
+	if flee_target and flee_target.is_in_group(player_hand_group):
+		return player_hand_flee_safe_radius
 
 	if flee_target and flee_target.is_in_group(interest_group):
 		return _get_close_interest_flee_safe_distance()
@@ -922,7 +1097,7 @@ func _can_observe_interest_target() -> bool:
 		debug_interest_los_clear = true
 		return true
 
-	debug_interest_in_fov = _is_target_in_fov(self, _interest_target, interest_fov_degrees)
+	debug_interest_in_fov = PerceptionHelper.is_target_in_fov(self, _interest_target, interest_fov_degrees)
 	if not debug_interest_in_fov:
 		return false
 
@@ -938,7 +1113,7 @@ func _interest_target_has_los_to_agent() -> bool:
 	if debug_interest_distance < 0.0 or debug_interest_distance > _get_effective_interest_gaze_flee_radius():
 		return false
 
-	debug_interest_gaze_in_fov = _is_target_in_fov(_interest_target, self, interest_gaze_fov_degrees)
+	debug_interest_gaze_in_fov = PerceptionHelper.is_target_in_fov(_interest_target, self, interest_gaze_fov_degrees)
 	if not debug_interest_gaze_in_fov:
 		return false
 
@@ -960,35 +1135,17 @@ func _has_perception_line_of_sight(observer: Node3D, target: Node3D) -> bool:
 	)
 
 
-func _is_target_in_fov(observer: Node3D, target: Node3D, fov_degrees: float) -> bool:
-	if observer == null or target == null:
-		return false
-	if fov_degrees >= 359.0:
-		return true
-
-	var to_target: Vector3 = target.global_position - observer.global_position
-	if to_target.length_squared() <= 0.0001:
-		return true
-
-	var forward: Vector3 = _get_agent_forward(observer)
-	var dot_to_target: float = clamp(forward.dot(to_target.normalized()), -1.0, 1.0)
-	var fov_threshold: float = cos(deg_to_rad(fov_degrees * 0.5))
-	return dot_to_target >= fov_threshold
-
-
-func _get_agent_forward(agent: Node3D) -> Vector3:
-	var direction_value: Variant = agent.get(&"direction")
-	if direction_value is Vector3 and direction_value.length_squared() > 0.0001:
-		return direction_value.normalized()
-
-	return (-agent.global_transform.basis.z).normalized()
-
-
 func _get_active_speed_limit() -> float:
 	if _is_flee_state_active():
 		return max_speed * flee_speed_scale
 
-	if steering_mode == SteeringMode.AUTO and _autonomous_state == HushlingStateMachine.OBSERVE:
+	if _autonomous_state == HushlingStateMachine.FOLLOW:
+		return max_speed * follow_speed_scale * _speed_variation
+
+	if _autonomous_state == HushlingStateMachine.REGROUP:
+		return max_speed * regroup_speed_scale * _speed_variation
+
+	if _autonomous_state == HushlingStateMachine.OBSERVE:
 		return max_speed * observe_speed_limit_scale * _speed_variation
 
 	return max_speed * calm_speed_scale * _speed_variation
@@ -1018,23 +1175,3 @@ func _sample_wander_direction(time: float) -> Vector3:
 	)
 
 	return _safe_direction(sample, Vector3.FORWARD)
-
-
-func _seed_from_name() -> float:
-	var seed_text: String = "%s:%s" % [name, str(get_instance_id())]
-	var seed_value: int = abs(hash(seed_text)) % 10000
-	return float(seed_value) / 10000.0 * TAU
-
-
-func _mode_to_string(mode: SteeringMode) -> String:
-	match mode:
-		SteeringMode.AUTO:
-			return "AUTO"
-		SteeringMode.SEEK:
-			return "SEEK"
-		SteeringMode.ARRIVE:
-			return "ARRIVE"
-		SteeringMode.FLEE:
-			return "FLEE"
-		_:
-			return "WANDER"

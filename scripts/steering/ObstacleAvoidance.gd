@@ -1,6 +1,8 @@
 extends RefCounted
 class_name ObstacleAvoidance
 
+const AgentPerceptionHelper := preload("res://scripts/perception/AgentPerception.gd")
+
 
 static func calculate(
 	agent: Node3D,
@@ -16,11 +18,12 @@ static func calculate(
 		"hit": false,
 		"hit_position": Vector3.ZERO,
 		"hit_normal": Vector3.ZERO,
+		"collider": null,
 	}
 	if agent == null or not agent.is_inside_tree() or feeler_length <= 0.0 or max_speed <= 0.0:
 		return result
 
-	var forward: Vector3 = _safe_direction(input_velocity, _read_agent_direction(agent))
+	var forward: Vector3 = _safe_direction(input_velocity, AgentPerceptionHelper.get_forward(agent))
 	var right_axis: Vector3 = forward.cross(Vector3.UP)
 	if right_axis.length_squared() <= 0.0001:
 		right_axis = Vector3.RIGHT
@@ -65,19 +68,12 @@ static func calculate(
 			result["hit"] = true
 			result["hit_position"] = hit_position
 			result["hit_normal"] = hit_normal
+			result["collider"] = hit.get("collider", null)
 
 	if combined_force.length_squared() > 0.0001:
 		result["force"] = combined_force.normalized() * max_speed
 
 	return result
-
-
-static func _read_agent_direction(agent: Node3D) -> Vector3:
-	var direction_value: Variant = agent.get(&"direction")
-	if direction_value is Vector3 and direction_value.length_squared() > 0.0001:
-		return direction_value.normalized()
-
-	return (-agent.global_transform.basis.z).normalized()
 
 
 static func _build_exclude_rids(agent: Node3D, exclude: Array) -> Array[RID]:

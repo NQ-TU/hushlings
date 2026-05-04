@@ -1,0 +1,36 @@
+[gd_resource type="Resource" script_class="HushlingProfile" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/profiles/HushlingProfile.gd" id="1_profile"]
+
+[resource]
+script = ExtResource("1_profile")
+observe_distance = 0.78
+follow_distance = 1.05
+follow_start_distance = 1.35
+follow_speed_scale = 0.25
+interest_flee_radius = 0.95
+flee_radius = 0.82
+flee_safe_radius = 1.55
+isolated_interest_flee_radius = 1.85
+isolated_interest_gaze_flee_radius = 2.7
+isolated_threat_flee_radius = 1.65
+isolated_flee_safe_radius = 2.5
+regroup_strength = 0.5
+regroup_loneliness_threshold = 0.34
+regroup_exit_loneliness = 0.16
+regroup_speed_scale = 0.28
+fear_rise_rate = 1.5
+fear_decay_rate = 0.28
+curiosity_rise_rate = 0.45
+curiosity_decay_rate = 0.48
+confidence_rise_rate = 0.24
+confidence_decay_rate = 0.34
+fear_flee_threshold = 0.64
+curiosity_observe_threshold = 0.2
+follow_curiosity_threshold = 0.48
+follow_confidence_threshold = 0.28
+confidence_fear_resistance = 0.12
+calm_speed_scale = 0.38
+separation_weight = 0.92
+cohesion_weight = 0.15
+alignment_weight = 0.04

@@ -1,20 +1,23 @@
 extends Resource
 class_name HushlingProfile
 
-@export_group("Minimal Autonomous Test")
+@export_group("Behaviour")
 @export var autonomous_enabled: bool = true
 @export var use_group_perception: bool = true
 @export var interest_group: StringName = &"interest_entity"
 @export var threat_group: StringName = &"threat_entity"
 @export_range(0.1, 10.0, 0.01) var awareness_radius: float = 2.0
 @export_range(0.1, 10.0, 0.01) var observe_distance: float = 0.65
+@export_range(0.1, 10.0, 0.01) var follow_distance: float = 0.9
+@export_range(0.1, 10.0, 0.01) var follow_start_distance: float = 1.1
+@export_range(0.0, 2.0, 0.01) var follow_start_margin: float = 0.12
 @export_range(0.05, 10.0, 0.01) var interest_flee_radius: float = 0.8
 @export_range(0.0, 5.0, 0.01) var interest_flee_clearance: float = 0.2
 @export_range(0.05, 10.0, 0.01) var flee_radius: float = 0.7
 @export_range(0.1, 10.0, 0.01) var flee_safe_radius: float = 1.35
 @export_range(0.05, 1.0, 0.01) var calm_speed_scale: float = 0.45
-@export_range(0.0, 5.0, 0.01) var observe_speed_scale: float = 0.42
 @export_range(0.05, 1.0, 0.01) var observe_speed_limit_scale: float = 0.32
+@export_range(0.0, 5.0, 0.01) var follow_speed_scale: float = 0.34
 @export_range(0.0, 5.0, 0.01) var flee_speed_scale: float = 1.0
 
 @export_group("Flee Breakup")
@@ -34,8 +37,9 @@ class_name HushlingProfile
 @export_range(0.05, 10.0, 0.01) var isolated_threat_flee_radius: float = 1.4
 @export_range(0.1, 10.0, 0.01) var isolated_flee_safe_radius: float = 2.25
 @export_range(0.1, 8.0, 0.01) var regroup_radius: float = 2.0
-@export_range(0.0, 3.0, 0.01) var regroup_strength: float = 0.16
+@export_range(0.0, 3.0, 0.01) var regroup_strength: float = 0.38
 @export_range(0.0, 1.0, 0.01) var regroup_loneliness_threshold: float = 0.45
+@export_range(0.0, 1.0, 0.01) var regroup_exit_loneliness: float = 0.22
 @export_range(0.05, 1.0, 0.01) var regroup_speed_scale: float = 0.34
 
 @export_group("Visibility")
@@ -55,6 +59,20 @@ class_name HushlingProfile
 @export_range(1.0, 85.0, 1.0) var obstacle_feeler_angle_degrees: float = 34.0
 @export_range(0.0, 5.0, 0.01) var obstacle_avoidance_weight: float = 0.82
 
+@export_group("Player Interaction")
+@export var player_influence_enabled: bool = true
+@export var player_group: StringName = &"player"
+@export var player_hand_group: StringName = &"player_hand"
+@export var flee_from_player_hand_feelers: bool = true
+@export_range(0.05, 5.0, 0.01) var player_hand_flee_memory_time: float = 1.3
+@export_range(0.1, 10.0, 0.01) var player_hand_flee_safe_radius: float = 1.15
+@export var startle_from_direct_player_gaze: bool = true
+@export_range(0.1, 10.0, 0.01) var player_gaze_range: float = 2.6
+@export_range(1.0, 45.0, 0.5) var player_dead_center_gaze_degrees: float = 8.0
+@export_range(0.0, 1.0, 0.01) var player_gaze_isolation_threshold: float = 0.65
+@export_range(0.05, 5.0, 0.01) var player_gaze_startled_duration: float = 1.0
+@export_range(0.1, 16.0, 0.1) var player_gaze_turn_response: float = 5.0
+
 @export_group("Internal Variables")
 @export_range(0.0, 3.0, 0.01) var fear_rise_rate: float = 1.2
 @export_range(0.0, 3.0, 0.01) var fear_decay_rate: float = 0.35
@@ -68,6 +86,8 @@ class_name HushlingProfile
 @export_range(0.0, 3.0, 0.01) var energy_drain_rate: float = 0.18
 @export_range(0.0, 1.0, 0.01) var fear_flee_threshold: float = 0.72
 @export_range(0.0, 1.0, 0.01) var curiosity_observe_threshold: float = 0.22
+@export_range(0.0, 1.0, 0.01) var follow_curiosity_threshold: float = 0.34
+@export_range(0.0, 1.0, 0.01) var follow_confidence_threshold: float = 0.12
 @export_range(0.0, 1.0, 0.01) var confidence_fear_resistance: float = 0.18
 
 @export_group("Wander")
@@ -75,6 +95,15 @@ class_name HushlingProfile
 @export_range(0.01, 3.0, 0.01) var wander_frequency: float = 0.18
 @export_range(0.01, 10.0, 0.01) var wander_smoothing: float = 1.25
 @export_range(0.0, 1.0, 0.01) var vertical_wander_amount: float = 0.24
+
+@export_group("Idle Cadence")
+@export var idle_cadence_enabled: bool = true
+@export_range(0.0, 1.0, 0.01) var idle_probability: float = 0.34
+@export_range(0.05, 8.0, 0.01) var idle_duration_min: float = 0.7
+@export_range(0.05, 8.0, 0.01) var idle_duration_max: float = 1.8
+@export_range(0.05, 12.0, 0.01) var move_duration_min: float = 1.4
+@export_range(0.05, 12.0, 0.01) var move_duration_max: float = 3.4
+@export_range(0.0, 0.3, 0.01) var idle_drift_scale: float = 0.05
 
 @export_group("Home Tether")
 @export_range(0.1, 10.0, 0.01) var home_radius: float = 1.25

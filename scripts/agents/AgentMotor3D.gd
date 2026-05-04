@@ -79,3 +79,9 @@ func _safe_direction(value: Vector3, fallback: Vector3) -> Vector3:
 	if value.length_squared() <= 0.0001:
 		return fallback.normalized()
 	return value.normalized()
+
+
+func _make_instance_seed() -> float:
+	var seed_text: String = "%s:%s" % [name, str(get_instance_id())]
+	var seed_value: int = abs(hash(seed_text)) % 10000
+	return float(seed_value) / 10000.0 * TAU

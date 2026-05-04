@@ -268,6 +268,8 @@ func _update_overlay() -> void:
 	var interest_los_clear: bool = _read_bool_property(&"debug_interest_los_clear", false)
 	var interest_gaze_los_clear: bool = _read_bool_property(&"debug_interest_gaze_los_clear", false)
 	var obstacle_hit: bool = _read_bool_property(&"debug_obstacle_hit", false)
+	var player_hand_flee_active: bool = _read_bool_property(&"debug_player_hand_flee_active", false)
+	var player_gaze_direct: bool = _read_bool_property(&"debug_player_gaze_direct", false)
 	var mind_text: String = "fear %.2f | curiosity %.2f | confidence %.2f | loneliness %.2f | support %.2f | flee %.2f" % [
 		_read_float_property(&"fear", 0.0),
 		_read_float_property(&"curiosity", 0.0),
@@ -278,11 +280,11 @@ func _update_overlay() -> void:
 	]
 
 	if compact_2d_overlay:
-		_debug_draw_2d.call("set_text", "Hushlings/debug", "G debug | 0 AUTO 1 WANDER 2 SEEK 3 ARRIVE 4 FLEE")
+		_debug_draw_2d.call("set_text", "Hushlings/debug", "G toggles debug")
 		_debug_draw_2d.call(
 			"set_text",
 			"Agent/status",
-			"%s | speed %.2f | group %d | interest %s | visible %s | watched %s | los %s/%s | obstacle %s" % [
+			"%s | speed %.2f | group %d | interest %s | visible %s | watched %s | los %s/%s | hand %s | gaze %s" % [
 				_read_string_property(&"current_state", fallback_state_name),
 				velocity.length(),
 				neighbour_count,
@@ -291,14 +293,15 @@ func _update_overlay() -> void:
 				_format_bool(interest_sees_agent),
 				_format_bool(interest_los_clear),
 				_format_bool(interest_gaze_los_clear),
-				_format_bool(obstacle_hit),
+				_format_bool(player_hand_flee_active or obstacle_hit),
+				_format_bool(player_gaze_direct),
 			]
 		)
 		_debug_draw_2d.call("set_text", "Agent/mind", mind_text)
 		_clear_verbose_overlay()
 		return
 
-	_debug_draw_2d.call("set_text", "Hushlings/debug", "0 AUTO  1 WANDER  2 SEEK  3 ARRIVE  4 FLEE  |  G toggles debug")
+	_debug_draw_2d.call("set_text", "Hushlings/debug", "G toggles debug")
 	_debug_draw_2d.call("set_text", "Agent/status", "")
 	_debug_draw_2d.call("set_text", "Agent/state", _read_string_property(&"current_state", fallback_state_name))
 	_debug_draw_2d.call("set_text", "Agent/mind", mind_text)
@@ -314,6 +317,8 @@ func _update_overlay() -> void:
 	_debug_draw_2d.call("set_text", "Agent/regroup_force", _format_vector(_read_vector_property(&"regroup_force", Vector3.ZERO)))
 	_debug_draw_2d.call("set_text", "Agent/obstacle_avoidance_force", _format_vector(_read_vector_property(&"obstacle_avoidance_force", Vector3.ZERO)))
 	_debug_draw_2d.call("set_text", "Agent/obstacle_hit", str(obstacle_hit))
+	_debug_draw_2d.call("set_text", "Agent/player_hand_flee", str(player_hand_flee_active))
+	_debug_draw_2d.call("set_text", "Agent/player_gaze_direct", str(player_gaze_direct))
 	_debug_draw_2d.call("set_text", "Agent/interest_visible", str(interest_visible))
 	_debug_draw_2d.call("set_text", "Agent/interest_sees_agent", str(interest_sees_agent))
 	_debug_draw_2d.call("set_text", "Agent/interest_los_clear", str(interest_los_clear))
@@ -347,6 +352,8 @@ func _clear_verbose_overlay() -> void:
 	_debug_draw_2d.call("set_text", "Agent/regroup_force", "")
 	_debug_draw_2d.call("set_text", "Agent/obstacle_avoidance_force", "")
 	_debug_draw_2d.call("set_text", "Agent/obstacle_hit", "")
+	_debug_draw_2d.call("set_text", "Agent/player_hand_flee", "")
+	_debug_draw_2d.call("set_text", "Agent/player_gaze_direct", "")
 	_debug_draw_2d.call("set_text", "Agent/interest_visible", "")
 	_debug_draw_2d.call("set_text", "Agent/interest_sees_agent", "")
 	_debug_draw_2d.call("set_text", "Agent/interest_los_clear", "")

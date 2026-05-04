@@ -67,6 +67,29 @@ static func has_line_of_sight(
 	return observer.get_world_3d().direct_space_state.intersect_ray(query).is_empty()
 
 
+static func is_target_in_fov(observer: Node3D, target: Node3D, fov_degrees: float) -> bool:
+	if observer == null or target == null:
+		return false
+	if fov_degrees >= 359.0:
+		return true
+
+	var to_target: Vector3 = target.global_position - observer.global_position
+	if to_target.length_squared() <= 0.0001:
+		return true
+
+	var dot_to_target: float = clamp(get_forward(observer).dot(to_target.normalized()), -1.0, 1.0)
+	var fov_threshold: float = cos(deg_to_rad(fov_degrees * 0.5))
+	return dot_to_target >= fov_threshold
+
+
+static func get_forward(agent: Node3D) -> Vector3:
+	var direction_value: Variant = agent.get(&"direction")
+	if direction_value is Vector3 and direction_value.length_squared() > 0.0001:
+		return direction_value.normalized()
+
+	return (-agent.global_transform.basis.z).normalized()
+
+
 static func _build_exclude_rids(observer: Node3D, target: Node3D) -> Array[RID]:
 	var exclude_rids: Array[RID] = []
 	if observer is CollisionObject3D:

@@ -2,13 +2,9 @@
 
 [ext_resource type="PackedScene" path="res://scenes/agents/HushlingAgent.tscn" id="1_hushling_agent"]
 [ext_resource type="PackedScene" path="res://scenes/agents/CrawlerAgent.tscn" id="2_crawler_agent"]
-
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_seek_target"]
-albedo_color = Color(0.1, 0.8, 0.32, 1)
-roughness = 0.5
-emission_enabled = true
-emission = Color(0.05, 0.55, 0.18, 1)
-emission_energy_multiplier = 0.45
+[ext_resource type="Script" path="res://scripts/agents/PlayerInfluence.gd" id="3_player_influence"]
+[ext_resource type="Resource" path="res://resources/hushlings/HushlingProfile_Timid.tres" id="4_profile_timid"]
+[ext_resource type="Resource" path="res://resources/hushlings/HushlingProfile_Bold.tres" id="5_profile_bold"]
 
 [sub_resource type="SphereMesh" id="SphereMesh_marker"]
 radius = 0.085
@@ -56,34 +52,35 @@ size = Vector3(0.26, 0.46, 0.26)
 [sub_resource type="BoxShape3D" id="BoxShape3D_obstacle"]
 size = Vector3(0.26, 0.46, 0.26)
 
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_player_hand"]
+albedo_color = Color(0.55, 0.68, 0.95, 1)
+roughness = 0.48
+emission_enabled = true
+emission = Color(0.18, 0.34, 0.72, 1)
+emission_energy_multiplier = 0.25
+
+[sub_resource type="SphereMesh" id="SphereMesh_player_hand"]
+radius = 0.14
+height = 0.28
+radial_segments = 16
+rings = 8
+
+[sub_resource type="SphereShape3D" id="SphereShape3D_player_hand"]
+radius = 0.18
+
 [node name="BehaviourSandbox" type="Node3D" unique_id=482098564]
 
 [node name="HushlingAgent" parent="." unique_id=1845606375 instance=ExtResource("1_hushling_agent")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.12, 0.34, 0.02)
-seek_target_path = NodePath("../SeekArriveTarget")
-arrive_target_path = NodePath("../SeekArriveTarget")
-flee_threat_path = NodePath("../FleeThreat")
-interest_flee_radius = 0.8
-flee_radius = 0.62
-flee_safe_radius = 1.0
+profile = ExtResource("4_profile_timid")
 
 [node name="HushlingAgentB" parent="." unique_id=555157585 instance=ExtResource("1_hushling_agent")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.12, 0.38, -0.08)
-seek_target_path = NodePath("../SeekArriveTarget")
-arrive_target_path = NodePath("../SeekArriveTarget")
-flee_threat_path = NodePath("../FleeThreat")
-interest_flee_radius = 0.8
-flee_radius = 0.62
-flee_safe_radius = 1.0
+profile = ExtResource("5_profile_bold")
 
 [node name="HushlingAgentC" parent="." unique_id=1724075786 instance=ExtResource("1_hushling_agent")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.02, 0.31, 0.22)
-seek_target_path = NodePath("../SeekArriveTarget")
-arrive_target_path = NodePath("../SeekArriveTarget")
-flee_threat_path = NodePath("../FleeThreat")
-interest_flee_radius = 0.8
-flee_radius = 0.62
-flee_safe_radius = 1.0
+profile = ExtResource("4_profile_timid")
 
 [node name="CrawlerAgent" parent="." unique_id=814970333 instance=ExtResource("2_crawler_agent")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.9, 0.42, -0.52)
@@ -115,18 +112,24 @@ text = "LOS
 OBSTACLE"
 font_size = 16
 
-[node name="SeekArriveTarget" type="MeshInstance3D" parent="." unique_id=1066932433]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.32, 0.48, -0.85)
-material_override = SubResource("StandardMaterial3D_seek_target")
-mesh = SubResource("SphereMesh_marker")
+[node name="PlayerHandProbe" type="Area3D" parent="." groups=["obstacle", "player", "player_hand"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.54, 0.39, -0.02)
+collision_mask = 0
 
-[node name="SeekArriveLabel" type="Label3D" parent="SeekArriveTarget" unique_id=1833803072]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.18, 0)
+[node name="MeshInstance3D" type="MeshInstance3D" parent="PlayerHandProbe"]
+material_override = SubResource("StandardMaterial3D_player_hand")
+mesh = SubResource("SphereMesh_player_hand")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="PlayerHandProbe"]
+shape = SubResource("SphereShape3D_player_hand")
+
+[node name="PlayerHandLabel" type="Label3D" parent="PlayerHandProbe"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.26, 0)
 billboard = 1
-modulate = Color(0.72, 1, 0.78, 1)
-text = "MANUAL
-SEEK / ARRIVE"
-font_size = 22
+modulate = Color(0.72, 0.84, 1, 1)
+text = "PLAYER HAND
+feeler flee"
+font_size = 16
 
 [node name="FleeThreat" type="MeshInstance3D" parent="." unique_id=1271892773 groups=["threat_entity"]]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.15, 0.44, 0.48)
@@ -149,6 +152,11 @@ mesh = SubResource("CylinderMesh_home_marker")
 transform = Transform3D(1, 0, 0, 0, 0.96105546, 0.27635565, 0, -0.27635565, 0.96105546, 0, 1.25, 3.2)
 current = true
 fov = 48.0
+
+[node name="PlayerInfluence" type="Node3D" parent="Camera3D" groups=["player"]]
+script = ExtResource("3_player_influence")
+gaze_range = 4.0
+dead_center_gaze_degrees = 6.5
 
 [node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=1474065907]
 environment = SubResource("Environment_behaviour_sandbox")
