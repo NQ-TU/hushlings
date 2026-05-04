@@ -15,6 +15,34 @@ static func hand_from_feeler_result(result: Dictionary, player_hand_group: Strin
 	return collider
 
 
+static func find_observable_source(
+	observer: Node3D,
+	player_group: StringName,
+	player_hand_group: StringName,
+	radius: float
+) -> Node3D:
+	if observer == null or not observer.is_inside_tree() or radius <= 0.0:
+		return null
+
+	var nearest_source: Node3D
+	var nearest_distance_sq: float = radius * radius
+	for candidate in observer.get_tree().get_nodes_in_group(player_group):
+		var source := candidate as Node3D
+		if source == null or source.is_in_group(player_hand_group):
+			continue
+		if not _is_observable_source(source):
+			continue
+
+		var distance_sq: float = observer.global_position.distance_squared_to(source.global_position)
+		if distance_sq > nearest_distance_sq:
+			continue
+
+		nearest_source = source
+		nearest_distance_sq = distance_sq
+
+	return nearest_source
+
+
 static func find_direct_gaze_source(
 	observer: Node3D,
 	player_group: StringName,
@@ -80,6 +108,13 @@ static func flee_velocity(
 
 static func _is_gaze_source(source: Node3D) -> bool:
 	var value: Variant = source.get(&"is_gaze_source")
+	if value is bool:
+		return value
+	return true
+
+
+static func _is_observable_source(source: Node3D) -> bool:
+	var value: Variant = source.get(&"is_observable_source")
 	if value is bool:
 		return value
 	return true

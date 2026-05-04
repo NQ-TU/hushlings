@@ -9,12 +9,18 @@ const IdleCadenceHelper := preload("res://scripts/agents/IdleCadence.gd")
 const FleeMemoryHelper := preload("res://scripts/agents/FleeMemory.gd")
 const HushlingStateMachine := preload("res://scripts/fsm/HushlingStateMachine.gd")
 const HushlingProfileResource := preload("res://scripts/profiles/HushlingProfile.gd")
+const HushlingVisualTimidScene := preload("res://scenes/visuals/HushlingVisual_Timid.tscn")
+const HushlingVisualBoldScene := preload("res://scenes/visuals/HushlingVisual_Bold.tscn")
 
 @export_group("Debug")
 @export var agent_debug_enabled: bool = true
 
 @export_group("Profile")
 @export var profile: HushlingProfileResource
+
+@export_group("Visual")
+@export_enum("Auto", "Timid", "Bold") var visual_variant: String = "Auto"
+@export var visual_root_path: NodePath = ^"VisualRoot"
 
 @export_group("Behaviour")
 @export var autonomous_enabled: bool = true
@@ -84,6 +90,9 @@ const HushlingProfileResource := preload("res://scripts/profiles/HushlingProfile
 @export var player_group: StringName = &"player"
 @export var player_hand_group: StringName = &"player_hand"
 @export var flee_from_player_hand_feelers: bool = true
+@export var observe_player_when_grouped: bool = true
+@export_range(1, 12, 1) var player_observe_min_group_size: int = 3
+@export_range(0.1, 10.0, 0.01) var player_observe_radius: float = 2.0
 @export_range(0.05, 5.0, 0.01) var player_hand_flee_memory_time: float = 1.3
 @export_range(0.1, 10.0, 0.01) var player_hand_flee_safe_radius: float = 1.15
 @export var startle_from_direct_player_gaze: bool = true
@@ -217,6 +226,7 @@ func _ready() -> void:
 	_flee_breakup_axis = _sample_wander_direction(1.19)
 	direction = current_wander_direction
 	target_direction = current_wander_direction
+	_apply_visual_binding()
 	_apply_debug_visibility()
 
 
@@ -250,6 +260,57 @@ func _process(delta: float) -> void:
 func _apply_profile() -> void:
 	if profile:
 		profile.apply_to(self)
+
+
+func _apply_visual_binding() -> void:
+	var visual_root: Node = get_node_or_null(visual_root_path)
+	var selected_visual_scene: PackedScene = _get_selected_visual_scene()
+	if selected_visual_scene == HushlingVisualBoldScene:
+		visual_root = _replace_visual_root(selected_visual_scene)
+	elif visual_root == null and selected_visual_scene:
+		visual_root = _replace_visual_root(selected_visual_scene)
+
+	if visual_root and visual_root.has_method(&"bind_agent"):
+		visual_root.call(&"bind_agent", self)
+
+
+func _replace_visual_root(visual_scene: PackedScene) -> Node:
+	var old_visual_root: Node = get_node_or_null(visual_root_path)
+	if old_visual_root:
+		remove_child(old_visual_root)
+		old_visual_root.queue_free()
+
+	var visual_root := visual_scene.instantiate()
+	visual_root.name = "VisualRoot"
+	add_child(visual_root)
+	move_child(visual_root, 0)
+	return visual_root
+
+
+func _get_selected_visual_scene() -> PackedScene:
+	match _get_visual_variant_name():
+		"Bold":
+			return HushlingVisualBoldScene
+		"Timid":
+			return HushlingVisualTimidScene
+		_:
+			return null
+
+
+func _get_visual_variant_name() -> String:
+	if visual_variant != "Auto":
+		return visual_variant
+
+	if profile == null:
+		return ""
+
+	var profile_text: String = "%s %s" % [profile.resource_path, profile.resource_name]
+	profile_text = profile_text.to_lower()
+	if profile_text.contains("bold"):
+		return "Bold"
+	if profile_text.contains("timid"):
+		return "Timid"
+	return ""
 
 
 func _apply_debug_visibility() -> void:
@@ -905,11 +966,13 @@ func _update_perception_targets() -> void:
 		return
 
 	if _interest_target == null:
-		_interest_target = PerceptionHelper.nearest_in_group(
+		var interest_entity_target: Node3D = PerceptionHelper.nearest_in_group(
 			self,
 			interest_group,
 			_get_interest_perception_radius()
 		)
+		var player_interest_target: Node3D = _find_observable_player_target()
+		_interest_target = _choose_interest_target(interest_entity_target, player_interest_target)
 
 	if _threat_target == null:
 		_threat_target = PerceptionHelper.nearest_in_group(
@@ -923,6 +986,61 @@ func _get_node3d_or_null(path: NodePath) -> Node3D:
 	if path == NodePath():
 		return null
 	return get_node_or_null(path) as Node3D
+
+
+func _choose_interest_target(a: Node3D, b: Node3D) -> Node3D:
+	if a == null:
+		return b
+	if b == null:
+		return a
+
+	var can_observe_a: bool = _can_observe_candidate(a)
+	var can_observe_b: bool = _can_observe_candidate(b)
+	if can_observe_a != can_observe_b:
+		return a if can_observe_a else b
+
+	var distance_a: float = global_position.distance_squared_to(a.global_position)
+	var distance_b: float = global_position.distance_squared_to(b.global_position)
+	return a if distance_a <= distance_b else b
+
+
+func _can_observe_candidate(target: Node3D) -> bool:
+	if target == null:
+		return false
+	if global_position.distance_to(target.global_position) > awareness_radius:
+		return false
+	if not PerceptionHelper.is_target_in_fov(self, target, interest_fov_degrees):
+		return false
+	if require_interest_los_to_observe and not _has_perception_line_of_sight(self, target):
+		return false
+
+	return true
+
+
+func _find_observable_player_target() -> Node3D:
+	if not player_influence_enabled or not observe_player_when_grouped:
+		return null
+	if not _has_player_observe_group_support():
+		return null
+
+	var player_target: Node3D = PlayerPerceptionHelper.find_observable_source(
+		self,
+		player_group,
+		player_hand_group,
+		min(player_observe_radius, awareness_radius)
+	)
+	if player_target == null:
+		return null
+	if not PerceptionHelper.is_target_in_fov(self, player_target, interest_fov_degrees):
+		return null
+	if require_interest_los_to_observe and not _has_perception_line_of_sight(self, player_target):
+		return null
+
+	return player_target
+
+
+func _has_player_observe_group_support() -> bool:
+	return debug_neighbour_count + 1 >= player_observe_min_group_size
 
 
 func _set_debug_target(target: Node3D) -> void:
@@ -1109,6 +1227,8 @@ func _interest_target_has_los_to_agent() -> bool:
 	debug_interest_gaze_in_fov = false
 	debug_interest_gaze_los_clear = false
 	if not flee_if_interest_sees_agent or _interest_target == null:
+		return false
+	if _interest_target.is_in_group(player_group):
 		return false
 	if debug_interest_distance < 0.0 or debug_interest_distance > _get_effective_interest_gaze_flee_radius():
 		return false

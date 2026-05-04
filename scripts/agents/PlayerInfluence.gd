@@ -2,6 +2,7 @@ extends Node3D
 class_name PlayerInfluence
 
 @export_group("Player Influence")
+@export var is_observable_source: bool = true
 @export var is_gaze_source: bool = true
 @export var is_hand_source: bool = false
 @export_range(0.1, 10.0, 0.01) var gaze_range: float = 2.6

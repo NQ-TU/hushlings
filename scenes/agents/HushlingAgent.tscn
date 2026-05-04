@@ -1,42 +1,15 @@
-[gd_scene load_steps=7 format=3]
+[gd_scene load_steps=4 format=3]
 
 [ext_resource type="Script" path="res://scripts/agents/HushlingAgent.gd" id="1_agent"]
 [ext_resource type="Script" path="res://scripts/debug/AgentDebugDraw.gd" id="2_debug"]
-
-[sub_resource type="SphereMesh" id="SphereMesh_body"]
-radius = 0.18
-height = 0.36
-radial_segments = 24
-rings = 12
-
-[sub_resource type="SphereMesh" id="SphereMesh_front"]
-radius = 0.045
-height = 0.09
-radial_segments = 12
-rings = 6
-
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_body"]
-albedo_color = Color(0.18, 0.22, 0.27, 1)
-roughness = 0.72
-
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_front"]
-albedo_color = Color(0.62, 0.82, 0.86, 1)
-emission_enabled = true
-emission = Color(0.38, 0.68, 0.78, 1)
-emission_energy_multiplier = 0.32
-roughness = 0.48
+[ext_resource type="PackedScene" path="res://scenes/visuals/HushlingVisual_Timid.tscn" id="3_visual_timid"]
 
 [node name="HushlingAgent" type="Node3D" groups=["hushling"]]
 script = ExtResource("1_agent")
+turn_rate_limit_enabled = true
+max_turn_degrees_per_second = 240.0
 
-[node name="TemporaryBodyVisual" type="MeshInstance3D" parent="."]
-mesh = SubResource("SphereMesh_body")
-material_override = SubResource("StandardMaterial3D_body")
-
-[node name="TemporaryForwardMarker" type="MeshInstance3D" parent="."]
-position = Vector3(0, 0.018, -0.17)
-mesh = SubResource("SphereMesh_front")
-material_override = SubResource("StandardMaterial3D_front")
+[node name="VisualRoot" parent="." instance=ExtResource("3_visual_timid")]
 
 [node name="AgentDebugDraw" type="Node3D" parent="."]
 script = ExtResource("2_debug")

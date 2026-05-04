@@ -64,6 +64,9 @@ class_name HushlingProfile
 @export var player_group: StringName = &"player"
 @export var player_hand_group: StringName = &"player_hand"
 @export var flee_from_player_hand_feelers: bool = true
+@export var observe_player_when_grouped: bool = true
+@export_range(1, 12, 1) var player_observe_min_group_size: int = 3
+@export_range(0.1, 10.0, 0.01) var player_observe_radius: float = 2.0
 @export_range(0.05, 5.0, 0.01) var player_hand_flee_memory_time: float = 1.3
 @export_range(0.1, 10.0, 0.01) var player_hand_flee_safe_radius: float = 1.15
 @export var startle_from_direct_player_gaze: bool = true
