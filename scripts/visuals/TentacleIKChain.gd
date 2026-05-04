@@ -15,44 +15,43 @@ const VALID_STATES := [
 const GENERATED_META := "hushling_ik_generated"
 
 @export_group("Chain")
-@export_range(3, 14, 1) var segment_count: int = 7:
+@export_storage var segment_count: int = 7:
 	set(value):
 		segment_count = max(value, 3)
 		_rebuild_requested = true
-@export_range(0.04, 0.45, 0.01) var segment_length: float = 0.13:
+@export_storage var segment_length: float = 0.13:
 	set(value):
 		segment_length = max(value, 0.03)
 		_rebuild_requested = true
-@export_range(0.006, 0.12, 0.001) var base_radius: float = 0.034:
+@export_storage var base_radius: float = 0.034:
 	set(value):
 		base_radius = max(value, 0.004)
-@export_range(0.12, 0.9, 0.01) var tip_radius_factor: float = 0.30
-@export var rest_direction: Vector3 = Vector3.RIGHT
-@export var segment_material: Material
-@export_range(1, 4, 1) var solver_iterations: int = 2
+@export_storage var tip_radius_factor: float = 0.30
+@export_storage var rest_direction: Vector3 = Vector3.RIGHT
+@export_storage var segment_material: Material
+@export_storage var solver_iterations: int = 2
 
 @export_group("Motion")
-@export_range(0.2, 18.0, 0.1) var follow_speed: float = 4.8
-@export_range(0.0, 3.0, 0.01) var trail_strength: float = 0.80
-@export_range(0.0, 2.0, 0.01) var spread_strength: float = 0.92
-@export_range(0.0, 1.4, 0.01) var curl_strength: float = 0.58
-@export_range(0.0, 1.0, 0.01) var sway_amount: float = 0.055
-@export_range(0.1, 4.0, 0.01) var sway_frequency: float = 0.44
-@export_range(0.0, 2.0, 0.01) var movement_flail_strength: float = 0.36
-@export_range(0.1, 6.0, 0.01) var movement_flail_frequency: float = 1.28
-@export_range(0.0, 1.0, 0.01) var movement_flail_vertical: float = 0.34
-@export_range(0, 4, 1) var rigid_base_segments: int = 2
-@export_range(0.0, 1.0, 0.01) var base_rigidity: float = 0.78
-@export_range(0.0, 2.0, 0.01) var distal_drag_bias: float = 0.42
-@export_range(0.0, 2.0, 0.01) var turn_drag_strength: float = 0.55
-@export_range(0.0, 1.0, 0.01) var rest_shape_strength: float = 0.28
-@export_range(0.0, 1.0, 0.01) var inward_hook_guard: float = 0.62
-@export var phase: float = 0.0
-@export var auto_update: bool = true
+@export_storage var follow_speed: float = 4.8
+@export_storage var trail_strength: float = 0.80
+@export_storage var spread_strength: float = 0.92
+@export_storage var curl_strength: float = 0.58
+@export_storage var sway_amount: float = 0.055
+@export_storage var sway_frequency: float = 0.44
+@export_storage var movement_flail_strength: float = 0.36
+@export_storage var movement_flail_frequency: float = 1.28
+@export_storage var movement_flail_vertical: float = 0.34
+@export_storage var rigid_base_segments: int = 2
+@export_storage var base_rigidity: float = 0.78
+@export_storage var distal_drag_bias: float = 0.42
+@export_storage var turn_drag_strength: float = 0.55
+@export_storage var rest_shape_strength: float = 0.28
+@export_storage var inward_hook_guard: float = 0.62
+@export_storage var phase: float = 0.0
+@export_storage var auto_update: bool = true
 
 @export_group("State")
-@export_enum("IDLE", "WANDER", "REGROUP", "OBSERVE", "FOLLOW", "FLEE", "STARTLED", "CONFIDENT")
-var visual_state: String = "WANDER"
+@export_storage var visual_state: String = "WANDER"
 
 var _joints: Array[Vector3] = []
 var _segments: Array[MeshInstance3D] = []

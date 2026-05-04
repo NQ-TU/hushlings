@@ -2,10 +2,17 @@ extends Node3D
 class_name AgentAudioEmitter
 
 const MIN_VOLUME_DB := -80.0
+const AGENT_KIND_AUTO := "Auto"
+const AGENT_KIND_HUSHLING := "Hushling"
+const AGENT_KIND_CRAWLER := "Crawler"
+const STATE_IDLE := "IDLE"
+const STATE_WANDER := "WANDER"
+const STATE_FLEE := "FLEE"
+const STATE_STARTLED := "STARTLED"
 
 @export_group("Target")
 @export var target_path: NodePath
-@export_enum("Auto", "Hushling", "Crawler") var agent_kind: String = "Auto"
+@export_enum("Auto", "Hushling", "Crawler") var agent_kind: String = AGENT_KIND_AUTO
 @export var audio_enabled: bool = true
 
 @export_group("Streams")
@@ -66,7 +73,7 @@ func _process(delta: float) -> void:
 		return
 
 	_one_shot_cooldown_remaining = maxf(0.0, _one_shot_cooldown_remaining - delta)
-	var state: String = _read_string(&"current_state", "WANDER")
+	var state: String = _read_string(&"current_state", STATE_WANDER)
 	var kind: String = _resolved_agent_kind()
 
 	_update_movement_loop(state, delta)
@@ -97,10 +104,10 @@ func _update_movement_loop(state: String, delta: float) -> void:
 	var target_volume: float = MIN_VOLUME_DB
 	var target_pitch: float = movement_pitch_scale
 	if audio_enabled and movement_loop_stream != null:
-		if state == "IDLE":
+		if state == STATE_IDLE:
 			target_volume = idle_volume_db
 			target_pitch = idle_pitch_scale
-		elif state == "FLEE" or state == "STARTLED":
+		elif state == STATE_FLEE or state == STATE_STARTLED:
 			target_volume = idle_volume_db - 6.0
 			target_pitch = movement_pitch_scale * 1.08
 		else:
@@ -119,10 +126,10 @@ func _update_group_murmur(kind: String, state: String, delta: float) -> void:
 	var target_volume: float = MIN_VOLUME_DB
 	var group_audio_active: bool = (
 		audio_enabled
-		and kind == "Hushling"
+		and kind == AGENT_KIND_HUSHLING
 		and group_murmur_stream != null
-		and state != "FLEE"
-		and state != "STARTLED"
+		and state != STATE_FLEE
+		and state != STATE_STARTLED
 	)
 	if group_audio_active:
 		var group_size: int = _read_int(&"debug_neighbour_count", 0) + 1
@@ -145,9 +152,9 @@ func _update_one_shots(state: String) -> void:
 	if not audio_enabled or state == _last_state or _one_shot_cooldown_remaining > 0.0:
 		return
 
-	if state == "STARTLED" and startled_stream != null:
+	if state == STATE_STARTLED and startled_stream != null:
 		_play_one_shot(startled_stream, flee_volume_db, flee_pitch_scale * 1.08)
-	elif state == "FLEE" and flee_stream != null:
+	elif state == STATE_FLEE and flee_stream != null:
 		_play_one_shot(flee_stream, flee_volume_db, flee_pitch_scale)
 
 
@@ -190,12 +197,12 @@ func _speed_factor() -> float:
 
 
 func _resolved_agent_kind() -> String:
-	if agent_kind != "Auto":
+	if agent_kind != AGENT_KIND_AUTO:
 		return agent_kind
 	if _target != null and _target.is_in_group(&"hushling"):
-		return "Hushling"
+		return AGENT_KIND_HUSHLING
 	if _target != null and _target.is_in_group(&"interest_entity"):
-		return "Crawler"
+		return AGENT_KIND_CRAWLER
 	return "Agent"
 
 
@@ -225,13 +232,25 @@ func _read_string(property_name: StringName, fallback: String) -> String:
 func _read_int(property_name: StringName, fallback: int) -> int:
 	if _target == null or not _has_property(property_name):
 		return fallback
-	return int(_target.get(property_name))
+
+	var value: Variant = _target.get(property_name)
+	if value is int:
+		return value
+	if value is float:
+		return int(value)
+	return fallback
 
 
 func _read_float(property_name: StringName, fallback: float) -> float:
 	if _target == null or not _has_property(property_name):
 		return fallback
-	return float(_target.get(property_name))
+
+	var value: Variant = _target.get(property_name)
+	if value is float:
+		return value
+	if value is int:
+		return float(value)
+	return fallback
 
 
 func _read_vector(property_name: StringName, fallback: Vector3) -> Vector3:

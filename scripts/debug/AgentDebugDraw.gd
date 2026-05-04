@@ -16,11 +16,13 @@ const OBSTACLE_FEELER_COLOR := Color(1.0, 0.18, 0.75, 0.08)
 const OBSTACLE_FORCE_COLOR := Color(1.0, 0.18, 0.75, 0.55)
 const OBSTACLE_HIT_COLOR := Color(1.0, 0.18, 0.28, 0.86)
 const HAND_FLEE_COLOR := Color(1.0, 0.18, 0.05, 0.9)
+const AGENT_KIND_AUTO := "Auto"
+const AGENT_KIND_HUSHLING := "Hushling"
 
 @export_group("Debug")
 @export var debug_enabled: bool = true
 @export var target_path: NodePath
-@export_enum("Auto", "Hushling", "Crawler") var agent_kind: String = "Auto"
+@export_enum("Auto", "Hushling", "Crawler") var agent_kind: String = AGENT_KIND_AUTO
 @export var allow_keyboard_toggle: bool = true
 @export var toggle_key: Key = KEY_G
 
@@ -32,18 +34,18 @@ const HAND_FLEE_COLOR := Color(1.0, 0.18, 0.05, 0.9)
 @export var show_target_ray: bool = true
 @export var show_obstacle_debug: bool = true
 @export var show_hand_flee: bool = true
-@export_range(0.0, 0.05, 0.001) var line_thickness: float = 0.0
-@export_range(0.0, 1.0, 0.01) var center_brightness: float = 0.0
+@export_storage var line_thickness: float = 0.0
+@export_storage var center_brightness: float = 0.0
 @export_range(0.01, 2.0, 0.01) var direction_vector_length: float = 0.34
 @export_range(0.01, 4.0, 0.01) var velocity_vector_scale: float = 1.2
 @export_range(0.01, 4.0, 0.01) var force_vector_scale: float = 1.45
-@export_range(0.01, 1.0, 0.01) var hand_indicator_length: float = 0.28
-@export_range(0.001, 0.2, 0.001) var arrow_head_size: float = 0.018
-@export_range(0.0, 1.0, 0.01) var vector_height: float = 0.2
+@export_storage var hand_indicator_length: float = 0.28
+@export_storage var arrow_head_size: float = 0.018
+@export_storage var vector_height: float = 0.2
 @export_range(0.05, 2.0, 0.01) var label_height: float = 0.36
 @export_range(8, 36, 1) var label_font_size: int = 14
 @export_range(8, 96, 1) var ring_segments: int = 32
-@export var draw_without_depth_test: bool = false
+@export_storage var draw_without_depth_test: bool = false
 
 var _target: Node3D
 var _debug_draw_3d: Object
@@ -71,7 +73,7 @@ func _process(_delta: float) -> void:
 	if not debug_enabled or _target == null or _debug_draw_3d == null:
 		return
 
-	var _draw_config: Variant = _create_draw_config()
+	var _scoped_draw_config: Variant = _create_draw_config()
 
 	var kind: String = _resolved_agent_kind()
 	var agent_position: Vector3 = _target.global_position
@@ -83,7 +85,7 @@ func _process(_delta: float) -> void:
 		_draw_obstacle_debug(agent_position, vector_origin)
 	if show_hand_flee:
 		_draw_hand_flee(agent_position, vector_origin)
-	if kind == "Hushling":
+	if kind == AGENT_KIND_HUSHLING:
 		_draw_hushling_debug(agent_position)
 	if show_state_label:
 		_draw_state_label(kind, agent_position)
@@ -115,10 +117,10 @@ func _create_draw_config() -> Variant:
 
 
 func _resolved_agent_kind() -> String:
-	if agent_kind != "Auto":
+	if agent_kind != AGENT_KIND_AUTO:
 		return agent_kind
 	if _target.is_in_group(&"hushling"):
-		return "Hushling"
+		return AGENT_KIND_HUSHLING
 	if _target.is_in_group(&"interest_entity"):
 		return "Crawler"
 	return "Agent"
@@ -206,7 +208,7 @@ func _draw_state_label(kind: String, agent_position: Vector3) -> void:
 func _label_text(kind: String) -> String:
 	var state: String = _read_string(&"current_state", kind)
 	var speed: float = _read_vector(&"velocity", Vector3.ZERO).length()
-	if kind == "Hushling":
+	if kind == AGENT_KIND_HUSHLING:
 		return "%s | %s | %.2f | group %d" % [
 			_target.name,
 			state,

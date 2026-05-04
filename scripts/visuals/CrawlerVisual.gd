@@ -4,7 +4,17 @@ class_name CrawlerVisual
 
 const CrawlerAppendageIKChainScript := preload("res://scripts/visuals/CrawlerAppendageIKChain.gd")
 const GENERATED_META := "crawler_v3_generated"
-const VALID_STATES := ["IDLE", "WANDER", "OBSERVE", "FLEE", "STARTLED", "CONFIDENT"]
+const STATE_IDLE := "IDLE"
+const STATE_WANDER := "WANDER"
+const STATE_FLEE := "FLEE"
+const VALID_STATES := [
+	STATE_IDLE,
+	STATE_WANDER,
+	"OBSERVE",
+	STATE_FLEE,
+	"STARTLED",
+	"CONFIDENT",
+]
 
 @export_group("Binding")
 @export var auto_bind_parent: bool = true
@@ -35,25 +45,25 @@ const VALID_STATES := ["IDLE", "WANDER", "OBSERVE", "FLEE", "STARTLED", "CONFIDE
 	set(value):
 		tail_taper = clamp(value, 0.15, 0.9)
 		_request_rebuild()
-@export_range(0.0, 0.18, 0.005) var initial_curve_amount: float = 0.06:
+@export_storage var initial_curve_amount: float = 0.06:
 	set(value):
 		initial_curve_amount = max(value, 0.0)
 		_request_rebuild()
 
 @export_group("Leading Sensor")
-@export var head_scale: Vector3 = Vector3(0.24, 0.12, 0.34):
+@export_storage var head_scale: Vector3 = Vector3(0.24, 0.12, 0.34):
 	set(value):
 		head_scale = value
 		_request_rebuild()
-@export_range(2, 8, 1) var sensor_slit_count: int = 5:
+@export_storage var sensor_slit_count: int = 5:
 	set(value):
 		sensor_slit_count = max(value, 2)
 		_request_rebuild()
-@export_range(0.006, 0.08, 0.002) var sensor_slit_width: float = 0.045:
+@export_storage var sensor_slit_width: float = 0.045:
 	set(value):
 		sensor_slit_width = max(value, 0.002)
 		_request_rebuild()
-@export_range(0.004, 0.05, 0.001) var sensor_slit_height: float = 0.014:
+@export_storage var sensor_slit_height: float = 0.014:
 	set(value):
 		sensor_slit_height = max(value, 0.002)
 		_request_rebuild()
@@ -63,27 +73,27 @@ const VALID_STATES := ["IDLE", "WANDER", "OBSERVE", "FLEE", "STARTLED", "CONFIDE
 	set(value):
 		sweeper_pairs = max(value, 2)
 		_request_rebuild()
-@export_range(3, 10, 1) var sweeper_segments: int = 5:
+@export_storage var sweeper_segments: int = 5:
 	set(value):
 		sweeper_segments = max(value, 3)
 		_request_rebuild()
-@export_range(0.035, 0.30, 0.005) var sweeper_segment_length: float = 0.105:
+@export_storage var sweeper_segment_length: float = 0.105:
 	set(value):
 		sweeper_segment_length = max(value, 0.02)
 		_request_rebuild()
-@export_range(0.004, 0.09, 0.001) var sweeper_radius: float = 0.023:
+@export_storage var sweeper_radius: float = 0.023:
 	set(value):
 		sweeper_radius = max(value, 0.002)
 		_request_rebuild()
-@export_range(3, 10, 1) var feeler_segments: int = 6:
+@export_storage var feeler_segments: int = 6:
 	set(value):
 		feeler_segments = max(value, 3)
 		_request_rebuild()
-@export_range(0.035, 0.36, 0.005) var feeler_segment_length: float = 0.12:
+@export_storage var feeler_segment_length: float = 0.12:
 	set(value):
 		feeler_segment_length = max(value, 0.02)
 		_request_rebuild()
-@export_range(0.003, 0.07, 0.001) var feeler_radius: float = 0.016:
+@export_storage var feeler_radius: float = 0.016:
 	set(value):
 		feeler_radius = max(value, 0.002)
 		_request_rebuild()
@@ -91,36 +101,34 @@ const VALID_STATES := ["IDLE", "WANDER", "OBSERVE", "FLEE", "STARTLED", "CONFIDE
 @export_group("Motion")
 @export_range(0.0, 0.18, 0.001) var wave_amount: float = 0.075
 @export_range(0.05, 3.0, 0.01) var wave_frequency: float = 0.48
-@export_range(0.0, 2.0, 0.01) var follow_lag: float = 1.1
-@export_range(0.0, 0.12, 0.001) var feeler_sway_amount: float = 0.035
-@export_range(0.0, 0.08, 0.001) var idle_motion_amount: float = 0.012
+@export_storage var follow_lag: float = 1.1
 @export_range(0.0, 1.0, 0.01) var flee_tension_amount: float = 0.62
-@export_range(0.0, 0.12, 0.001) var drift_amplitude: float = 0.035
-@export_range(0.05, 4.0, 0.01) var drift_frequency: float = 0.34
-@export_range(0.0, 0.16, 0.001) var body_pulse_amount: float = 0.035
-@export_range(0.05, 5.0, 0.01) var pulse_frequency: float = 0.78
+@export_storage var drift_amplitude: float = 0.035
+@export_storage var drift_frequency: float = 0.34
+@export_storage var body_pulse_amount: float = 0.035
+@export_storage var pulse_frequency: float = 0.78
 @export_range(0.0, 0.16, 0.001) var vertical_wave_amount: float = 0.065
-@export_range(0.0, 0.25, 0.001) var body_lag_amount: float = 0.075
-@export_range(0.5, 18.0, 0.1) var body_smoothing_speed: float = 3.8
-@export_range(0.5, 18.0, 0.1) var spine_chain_follow_speed: float = 3.0
+@export_storage var body_lag_amount: float = 0.075
+@export_storage var body_smoothing_speed: float = 3.8
+@export_storage var spine_chain_follow_speed: float = 3.0
 @export_range(0.5, 12.0, 0.1) var head_turn_response: float = 3.2
-@export_range(0.0, 1.0, 0.01) var vertical_turn_influence: float = 0.65
-@export_range(0.0, 0.25, 0.001) var minimum_facing_speed: float = 0.025
-@export_range(0.1, 12.0, 0.1) var body_turn_follow_speed: float = 0.55
-@export_range(0.0, 1.2, 0.001) var body_turn_lag_amount: float = 0.95
-@export_range(0.1, 8.0, 0.1) var body_heading_follow_speed: float = 0.55
-@export_range(0.2, 2.0, 0.01) var body_turn_distribution: float = 0.58
+@export_storage var vertical_turn_influence: float = 0.65
+@export_storage var minimum_facing_speed: float = 0.025
+@export_storage var body_turn_follow_speed: float = 0.55
+@export_storage var body_turn_lag_amount: float = 0.95
+@export_storage var body_heading_follow_speed: float = 0.55
+@export_storage var body_turn_distribution: float = 0.58
 @export_range(0.0, 24.0, 0.1) var movement_lean_amount: float = 8.0
 @export_range(0.0, 0.4, 0.001) var startled_curl_amount: float = 0.28
 @export_range(0.1, 12.0, 0.1) var velocity_response: float = 1.55
 
 @export_group("Turn Limits")
-@export_range(15.0, 240.0, 1.0) var head_turn_degrees_per_second: float = 95.0
-@export_range(4.0, 45.0, 0.5) var max_body_step_turn_degrees: float = 13.0
-@export_range(8.0, 90.0, 0.5) var max_body_total_turn_degrees: float = 58.0
-@export_range(4.0, 35.0, 0.5) var max_segment_yaw_degrees: float = 18.0
-@export_range(3.0, 30.0, 0.5) var max_segment_pitch_degrees: float = 12.0
-@export_range(3.0, 35.0, 0.5) var max_bank_angle_degrees: float = 16.0
+@export_storage var head_turn_degrees_per_second: float = 95.0
+@export_storage var max_body_step_turn_degrees: float = 13.0
+@export_storage var max_body_total_turn_degrees: float = 58.0
+@export_storage var max_segment_yaw_degrees: float = 18.0
+@export_storage var max_segment_pitch_degrees: float = 12.0
+@export_storage var max_bank_angle_degrees: float = 16.0
 
 @export_group("Appendage Motion")
 @export_range(0.0, 4.0, 0.01) var appendage_trail_strength: float = 1.0
@@ -149,7 +157,7 @@ const VALID_STATES := ["IDLE", "WANDER", "OBSERVE", "FLEE", "STARTLED", "CONFIDE
 	set(value):
 		ridge_color = value
 		_request_rebuild()
-@export_range(0.0, 2.0, 0.01) var body_emission_strength: float = 0.04:
+@export_storage var body_emission_strength: float = 0.04:
 	set(value):
 		body_emission_strength = value
 		_request_rebuild()
@@ -157,7 +165,7 @@ const VALID_STATES := ["IDLE", "WANDER", "OBSERVE", "FLEE", "STARTLED", "CONFIDE
 	set(value):
 		sensor_emission_strength = value
 		_request_rebuild()
-@export_range(0.0, 3.0, 0.01) var appendage_emission_strength: float = 0.08:
+@export_storage var appendage_emission_strength: float = 0.08:
 	set(value):
 		appendage_emission_strength = value
 		_request_rebuild()
@@ -173,10 +181,9 @@ const VALID_STATES := ["IDLE", "WANDER", "OBSERVE", "FLEE", "STARTLED", "CONFIDE
 
 var _agent: Node
 var _agent_properties: Dictionary = {}
-var _state_name: String = "WANDER"
+var _state_name: String = STATE_WANDER
 var _desired_velocity: Vector3 = Vector3.ZERO
 var _velocity: Vector3 = Vector3.ZERO
-var _previous_velocity: Vector3 = Vector3.ZERO
 var _direction: Vector3 = Vector3.FORWARD
 var _target_direction: Vector3 = Vector3.FORWARD
 var _motion_forward: Vector3 = Vector3.FORWARD
@@ -231,7 +238,6 @@ func _process(delta: float) -> void:
 	_time += delta
 	_state_age += delta
 	var velocity_alpha: float = 1.0 - exp(-velocity_response * delta)
-	_previous_velocity = _velocity
 	_velocity = _velocity.lerp(_desired_velocity, velocity_alpha)
 
 	_update_pose_motion(delta)
@@ -731,23 +737,6 @@ func _world_segment_spacing(index: int, spacing_scale: float) -> float:
 	return max(current_base.distance_to(previous_base) * spacing_scale, 0.001)
 
 
-func _segment_rotation_from_wave(
-		t: float,
-		local_velocity: Vector3,
-		vertical_wave: float,
-		side_wave: float,
-		undulation_scale: float,
-		turn_strength: float
-) -> Vector3:
-	var turn_bias: float = clamp(local_velocity.x / max(_speed_reference, 0.01), -1.0, 1.0)
-	var tail_weight: float = lerp(0.25, 1.0, pow(t, body_turn_distribution))
-	return Vector3(
-		vertical_wave * 0.13 * undulation_scale,
-		side_wave * 0.18 * undulation_scale + turn_bias * turn_strength * tail_weight * 0.28,
-		side_wave * -0.16 * undulation_scale - turn_bias * turn_strength * tail_weight * 0.16
-	)
-
-
 func _segment_rotation_from_chain(index: int, vertical_wave: float, side_wave: float, undulation_scale: float, turn_strength: float) -> Vector3:
 	var count: int = _chain_world_positions.size()
 	if count <= 1:
@@ -822,11 +811,11 @@ func _read_agent_values() -> void:
 
 	var idle_value: Variant = _get_agent_property(&"debug_is_idle", false)
 	if typeof(idle_value) == TYPE_BOOL and bool(idle_value):
-		set_agent_state("IDLE")
+		set_agent_state(STATE_IDLE)
 
 	var hand_flee_value: Variant = _get_agent_property(&"debug_player_hand_flee_active", false)
 	if typeof(hand_flee_value) == TYPE_BOOL and bool(hand_flee_value):
-		set_agent_state("FLEE")
+		set_agent_state(STATE_FLEE)
 
 	var velocity_value: Variant = _get_agent_property(&"velocity", _desired_velocity)
 	if typeof(velocity_value) == TYPE_VECTOR3:
@@ -848,14 +837,14 @@ func _read_agent_values() -> void:
 func _visual_state() -> String:
 	if VALID_STATES.has(_state_name):
 		return _state_name
-	return "WANDER"
+	return STATE_WANDER
 
 
 func _normalized_state(state_name: String) -> String:
 	var normalized: String = state_name.strip_edges().to_upper()
 	if VALID_STATES.has(normalized):
 		return normalized
-	return "WANDER"
+	return STATE_WANDER
 
 
 func _set_sensor_emphasis(brightness_factor: float) -> void:

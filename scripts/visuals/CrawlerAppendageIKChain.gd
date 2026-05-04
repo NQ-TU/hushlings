@@ -6,38 +6,38 @@ const VALID_STATES := ["IDLE", "WANDER", "OBSERVE", "FLEE", "STARTLED", "CONFIDE
 const GENERATED_META := "crawler_ik_generated"
 
 @export_group("Chain")
-@export_range(2, 12, 1) var segment_count: int = 5:
+@export_storage var segment_count: int = 5:
 	set(value):
 		segment_count = max(value, 2)
 		_rebuild_requested = true
-@export_range(0.025, 0.28, 0.005) var segment_length: float = 0.08:
+@export_storage var segment_length: float = 0.08:
 	set(value):
 		segment_length = max(value, 0.02)
 		_rebuild_requested = true
-@export_range(0.003, 0.06, 0.001) var base_radius: float = 0.012:
+@export_storage var base_radius: float = 0.012:
 	set(value):
 		base_radius = max(value, 0.002)
-@export_range(0.1, 0.9, 0.01) var tip_radius_factor: float = 0.34
-@export var rest_direction: Vector3 = Vector3.LEFT
-@export var segment_material: Material
+@export_storage var tip_radius_factor: float = 0.34
+@export_storage var rest_direction: Vector3 = Vector3.LEFT
+@export_storage var segment_material: Material
 
 @export_group("Role")
-@export_enum("FEELER", "SWEEPER", "STABILIZER") var behavior_role: String = "SWEEPER"
-@export_range(-1.0, 1.0, 0.01) var side_sign: float = 1.0
+@export_storage var behavior_role: String = "SWEEPER"
+@export_storage var side_sign: float = 1.0
 
 @export_group("Motion")
-@export_range(0.2, 24.0, 0.1) var follow_speed: float = 5.4
-@export_range(0.0, 3.0, 0.01) var trail_strength: float = 0.82
-@export_range(0.0, 2.5, 0.01) var sweep_strength: float = 0.62
-@export_range(0.0, 2.5, 0.01) var probe_strength: float = 0.45
-@export_range(0.0, 1.5, 0.01) var curl_strength: float = 0.5
-@export_range(0.0, 1.5, 0.01) var downward_bias: float = 0.22
-@export_range(0.1, 5.0, 0.01) var stroke_frequency: float = 0.36
-@export var phase: float = 0.0
-@export var auto_update: bool = true
+@export_storage var follow_speed: float = 5.4
+@export_storage var trail_strength: float = 0.82
+@export_storage var sweep_strength: float = 0.62
+@export_storage var probe_strength: float = 0.45
+@export_storage var curl_strength: float = 0.5
+@export_storage var downward_bias: float = 0.22
+@export_storage var stroke_frequency: float = 0.36
+@export_storage var phase: float = 0.0
+@export_storage var auto_update: bool = true
 
 @export_group("State")
-@export_enum("IDLE", "WANDER", "OBSERVE", "FLEE", "STARTLED", "CONFIDENT") var visual_state: String = "WANDER"
+@export_storage var visual_state: String = "WANDER"
 
 var _joints: Array[Vector3] = []
 var _segments: Array[MeshInstance3D] = []

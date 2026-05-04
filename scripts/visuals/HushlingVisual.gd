@@ -4,15 +4,18 @@ class_name HushlingVisual
 
 const TentacleIKChainScript := preload("res://scripts/visuals/TentacleIKChain.gd")
 const GENERATED_META := "hushling_v4_generated"
+const STATE_IDLE := "IDLE"
+const STATE_WANDER := "WANDER"
+const STATE_CONFIDENT := "CONFIDENT"
 const VALID_VISUAL_STATES := [
-	"IDLE",
-	"WANDER",
+	STATE_IDLE,
+	STATE_WANDER,
 	"REGROUP",
 	"OBSERVE",
 	"FOLLOW",
 	"FLEE",
 	"STARTLED",
-	"CONFIDENT",
+	STATE_CONFIDENT,
 ]
 
 @export_group("Binding")
@@ -24,7 +27,7 @@ const VALID_VISUAL_STATES := [
 	set(value):
 		eye_radius = value
 		_request_rebuild()
-@export_range(0.01, 0.12, 0.01) var eye_depth: float = 0.038:
+@export_storage var eye_depth: float = 0.038:
 	set(value):
 		eye_depth = value
 		_request_rebuild()
@@ -36,7 +39,7 @@ const VALID_VISUAL_STATES := [
 	set(value):
 		pupil_scale = value
 		_request_rebuild()
-@export_range(0.04, 0.35, 0.01) var back_core_depth: float = 0.115:
+@export_storage var back_core_depth: float = 0.115:
 	set(value):
 		back_core_depth = value
 		_request_rebuild()
@@ -50,7 +53,7 @@ const VALID_VISUAL_STATES := [
 	set(value):
 		attachment_radius = value
 		_request_rebuild()
-@export_range(3, 12, 1) var tendril_segments: int = 7:
+@export_storage var tendril_segments: int = 7:
 	set(value):
 		tendril_segments = value
 		_request_rebuild()
@@ -58,48 +61,48 @@ const VALID_VISUAL_STATES := [
 	set(value):
 		tendril_segment_length = value
 		_request_rebuild()
-@export_range(0.006, 0.06, 0.001) var tendril_base_radius: float = 0.020:
+@export_storage var tendril_base_radius: float = 0.020:
 	set(value):
 		tendril_base_radius = value
 		_request_rebuild()
-@export_range(0.1, 0.8, 0.01) var tendril_tip_radius_factor: float = 0.30:
+@export_storage var tendril_tip_radius_factor: float = 0.30:
 	set(value):
 		tendril_tip_radius_factor = value
 		_request_rebuild()
-@export_range(0.0, 0.12, 0.005) var ring_depth_offset: float = 0.010:
+@export_storage var ring_depth_offset: float = 0.010:
 	set(value):
 		ring_depth_offset = value
 		_request_rebuild()
-@export_range(0.0, 0.55, 0.01) var front_ring_back_sweep: float = 0.12:
+@export_storage var front_ring_back_sweep: float = 0.12:
 	set(value):
 		front_ring_back_sweep = value
 		_request_rebuild()
 @export_group("Rear Tendril Ring")
-@export var rear_tendril_ring_enabled: bool = true:
+@export_storage var rear_tendril_ring_enabled: bool = true:
 	set(value):
 		rear_tendril_ring_enabled = value
 		_request_rebuild()
-@export_range(0.45, 1.1, 0.01) var rear_ring_radius_scale: float = 0.82:
+@export_storage var rear_ring_radius_scale: float = 0.82:
 	set(value):
 		rear_ring_radius_scale = value
 		_request_rebuild()
-@export_range(0.0, 0.18, 0.005) var rear_ring_depth_offset: float = 0.075:
+@export_storage var rear_ring_depth_offset: float = 0.075:
 	set(value):
 		rear_ring_depth_offset = value
 		_request_rebuild()
-@export_range(0.55, 1.25, 0.01) var rear_tendril_length_scale: float = 0.88:
+@export_storage var rear_tendril_length_scale: float = 0.88:
 	set(value):
 		rear_tendril_length_scale = value
 		_request_rebuild()
-@export_range(0.45, 1.2, 0.01) var rear_tendril_radius_scale: float = 0.78:
+@export_storage var rear_tendril_radius_scale: float = 0.78:
 	set(value):
 		rear_tendril_radius_scale = value
 		_request_rebuild()
-@export_range(0.0, 0.5, 0.01) var rear_ring_angle_offset: float = 0.5:
+@export_storage var rear_ring_angle_offset: float = 0.5:
 	set(value):
 		rear_ring_angle_offset = value
 		_request_rebuild()
-@export_range(0.0, 0.8, 0.01) var rear_ring_back_sweep: float = 0.34:
+@export_storage var rear_ring_back_sweep: float = 0.34:
 	set(value):
 		rear_ring_back_sweep = value
 		_request_rebuild()
@@ -131,36 +134,36 @@ const VALID_VISUAL_STATES := [
 		_request_rebuild()
 @export_range(0.0, 5.0, 0.01) var eye_emission_strength: float = 1.05
 @export_range(0.0, 3.0, 0.01) var accent_emission_strength: float = 0.45
-@export_range(0.0, 1.0, 0.01) var core_emission_strength: float = 0.08
+@export_storage var core_emission_strength: float = 0.08
 
 @export_group("Motion")
 @export_range(0.5, 12.0, 0.1) var head_turn_response: float = 3.15
-@export_range(0.0, 1.0, 0.01) var vertical_turn_influence: float = 0.70
-@export_range(0.0, 0.25, 0.001) var minimum_facing_speed: float = 0.025
+@export_storage var vertical_turn_influence: float = 0.70
+@export_storage var minimum_facing_speed: float = 0.025
 @export_range(0.0, 18.0, 0.1) var movement_lean_amount: float = 5.5
 @export_range(0.0, 0.20, 0.001) var head_pulse_amount: float = 0.030
-@export_range(0.05, 4.0, 0.01) var head_pulse_frequency: float = 0.44
+@export_storage var head_pulse_frequency: float = 0.44
 @export_range(0.0, 0.12, 0.001) var drift_amplitude: float = 0.018
-@export_range(0.05, 4.0, 0.01) var drift_frequency: float = 0.30
+@export_storage var drift_frequency: float = 0.30
 @export_range(0.1, 14.0, 0.1) var velocity_response: float = 4.0
-@export_range(15.0, 720.0, 1.0) var visual_target_turn_degrees_per_second: float = 155.0
-@export_range(0.0, 65.0, 1.0) var max_eye_lead_degrees: float = 28.0
-@export_range(0.0, 45.0, 0.5) var max_bank_degrees: float = 16.0
-@export_range(0.1, 18.0, 0.1) var bank_response: float = 6.0
+@export_storage var visual_target_turn_degrees_per_second: float = 155.0
+@export_storage var max_eye_lead_degrees: float = 28.0
+@export_storage var max_bank_degrees: float = 16.0
+@export_storage var bank_response: float = 6.0
 @export_range(0.0, 4.0, 0.01) var tendril_trail_strength: float = 1.0
 @export_range(0.0, 4.0, 0.01) var tendril_spread_strength: float = 1.0
 @export_range(0.0, 4.0, 0.01) var tendril_sway_amount: float = 1.0
 @export_range(0.0, 4.0, 0.01) var tendril_movement_flail_strength: float = 0.38
-@export_range(0.1, 6.0, 0.01) var tendril_movement_flail_frequency: float = 1.28
-@export_range(0.0, 1.0, 0.01) var tendril_movement_flail_vertical: float = 0.34
+@export_storage var tendril_movement_flail_frequency: float = 1.28
+@export_storage var tendril_movement_flail_vertical: float = 0.34
 @export_range(0.1, 4.0, 0.01) var tendril_follow_speed: float = 0.86
-@export_range(1, 4, 1) var tendril_solver_iterations: int = 2
-@export_range(0, 4, 1) var tendril_rigid_base_segments: int = 2
-@export_range(0.0, 1.0, 0.01) var tendril_base_rigidity: float = 0.78
-@export_range(0.0, 2.0, 0.01) var tendril_distal_drag_bias: float = 0.42
-@export_range(0.0, 2.0, 0.01) var tendril_turn_drag_strength: float = 0.55
-@export_range(0.0, 1.0, 0.01) var tendril_rest_shape_strength: float = 0.28
-@export_range(0.0, 1.0, 0.01) var tendril_inward_hook_guard: float = 0.62
+@export_storage var tendril_solver_iterations: int = 2
+@export_storage var tendril_rigid_base_segments: int = 2
+@export_storage var tendril_base_rigidity: float = 0.78
+@export_storage var tendril_distal_drag_bias: float = 0.42
+@export_storage var tendril_turn_drag_strength: float = 0.55
+@export_storage var tendril_rest_shape_strength: float = 0.28
+@export_storage var tendril_inward_hook_guard: float = 0.62
 
 @export_group("Emotion Mapping")
 @export_range(0.0, 2.0, 0.01) var fear_curl_strength: float = 1.0
@@ -179,8 +182,8 @@ const VALID_VISUAL_STATES := [
 
 var _agent: Node
 var _agent_properties: Dictionary = {}
-var _state_name: String = "WANDER"
-var _visual_state: String = "WANDER"
+var _state_name: String = STATE_WANDER
+var _visual_state: String = STATE_WANDER
 var _state_age: float = 0.0
 var _desired_velocity: Vector3 = Vector3.ZERO
 var _velocity: Vector3 = Vector3.ZERO
@@ -757,24 +760,24 @@ func _set_eye_emphasis(scale_factor: float, brightness_factor: float) -> void:
 
 
 func _resolve_visual_state() -> String:
-	if _state_name == "IDLE":
-		return "IDLE"
-	if _state_name == "WANDER" and _confidence > 0.58 and _fear < 0.28:
-		return "CONFIDENT"
+	if _state_name == STATE_IDLE:
+		return STATE_IDLE
+	if _state_name == STATE_WANDER and _confidence > 0.58 and _fear < 0.28:
+		return STATE_CONFIDENT
 	if VALID_VISUAL_STATES.has(_state_name):
 		return _state_name
-	return "WANDER"
+	return STATE_WANDER
 
 
 func _normalized_agent_state(state_name: String) -> String:
 	var normalized: String = state_name.strip_edges().to_upper()
 	if normalized == "":
-		return "WANDER"
-	if normalized == "IDLE":
-		return "IDLE"
+		return STATE_WANDER
+	if normalized == STATE_IDLE:
+		return STATE_IDLE
 	if VALID_VISUAL_STATES.has(normalized):
 		return normalized
-	return "WANDER"
+	return STATE_WANDER
 
 
 func _create_materials() -> void:
