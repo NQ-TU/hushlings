@@ -1,0 +1,19 @@
+[gd_scene format=3 uid="uid://c5cuaoduugrye"]
+
+[ext_resource type="Script" uid="uid://ob120f5fftv6" path="res://scripts/xr/XRAgentSpawner.gd" id="1_spawner"]
+[ext_resource type="PackedScene" path="res://scenes/agents/HushlingAgent.tscn" id="2_hushling"]
+[ext_resource type="PackedScene" path="res://scenes/agents/CrawlerAgent.tscn" id="3_crawler"]
+[ext_resource type="Resource" uid="uid://buc8b0gtanprv" path="res://resources/hushlings/HushlingProfile_Timid.tres" id="4_timid"]
+[ext_resource type="Resource" uid="uid://oju0bh5esv3b" path="res://resources/hushlings/HushlingProfile_Bold.tres" id="5_bold"]
+
+[node name="XRAgentSpawner" type="Node3D" unique_id=664567870]
+script = ExtResource("1_spawner")
+hushling_scene = ExtResource("2_hushling")
+crawler_scene = ExtResource("3_crawler")
+timid_profile = ExtResource("4_timid")
+bold_profile = ExtResource("5_bold")
+agent_debug_enabled = false
+hushling_scale = 0.1
+hushling_count = 10
+crawler_count = 2
+min_agent_spawn_distance = 0.49

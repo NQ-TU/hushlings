@@ -69,3 +69,43 @@ static func apply_home_tether(
 	)
 	var home_velocity: Vector3 = arrive(current_position, home_position, max_speed, home_radius)
 	return input_velocity + home_velocity * tether_blend * home_tether_strength
+
+
+static func apply_home_box_tether(
+	current_position: Vector3,
+	home_position: Vector3,
+	input_velocity: Vector3,
+	max_speed: float,
+	home_bounds_size: Vector3,
+	home_tether_strength: float,
+	tether_start_ratio: float = 0.72
+) -> Vector3:
+	if home_tether_strength <= 0.0 or max_speed <= 0.0:
+		return input_velocity
+
+	var half_extents: Vector3 = home_bounds_size * 0.5
+	if half_extents.x <= 0.001 or half_extents.y <= 0.001 or half_extents.z <= 0.001:
+		return input_velocity
+
+	var offset: Vector3 = current_position - home_position
+	var correction := Vector3(
+		_axis_box_correction(offset.x, half_extents.x, tether_start_ratio),
+		_axis_box_correction(offset.y, half_extents.y, tether_start_ratio),
+		_axis_box_correction(offset.z, half_extents.z, tether_start_ratio)
+	)
+	if correction.length_squared() <= 0.0001:
+		return input_velocity
+
+	var tether_blend: float = clamp(correction.length(), 0.0, 1.0)
+	var home_velocity: Vector3 = correction.normalized() * max_speed
+	return input_velocity + home_velocity * tether_blend * home_tether_strength
+
+
+static func _axis_box_correction(axis_offset: float, half_extent: float, tether_start_ratio: float) -> float:
+	var start: float = half_extent * clamp(tether_start_ratio, 0.0, 0.98)
+	var distance: float = abs(axis_offset)
+	if distance <= start:
+		return 0.0
+
+	var pressure: float = clamp((distance - start) / max(half_extent - start, 0.001), 0.0, 1.0)
+	return -sign(axis_offset) * pressure
