@@ -173,9 +173,11 @@ func _update_overlay() -> void:
 	var desired_velocity: Vector3 = _read_vector_property(&"desired_velocity", Vector3.ZERO)
 	var steering_force: Vector3 = _read_vector_property(&"steering_force", Vector3.ZERO)
 
-	_debug_draw_2d.call("set_text", "Hushlings/debug", "1 WANDER  2 SEEK  3 ARRIVE  4 FLEE  |  G toggles debug")
+	_debug_draw_2d.call("set_text", "Hushlings/debug", "0 AUTO  1 WANDER  2 SEEK  3 ARRIVE  4 FLEE  |  G toggles debug")
 	_debug_draw_2d.call("set_text", "Agent/state", _read_string_property(&"current_state", fallback_state_name))
 	_debug_draw_2d.call("set_text", "Agent/target", _read_string_property(&"debug_target_name", ""))
+	_debug_draw_2d.call("set_text", "Agent/interest_distance", _format_distance(_read_float_property(&"debug_interest_distance", -1.0)))
+	_debug_draw_2d.call("set_text", "Agent/threat_distance", _format_distance(_read_float_property(&"debug_threat_distance", -1.0)))
 	_debug_draw_2d.call("set_text", "Agent/speed", "%.3f" % velocity.length())
 	_debug_draw_2d.call("set_text", "Agent/desired_velocity", _format_vector(desired_velocity))
 	_debug_draw_2d.call("set_text", "Agent/steering_force", _format_vector(steering_force))
@@ -188,6 +190,8 @@ func _clear_overlay() -> void:
 	_debug_draw_2d.call("set_text", "Hushlings/debug", "")
 	_debug_draw_2d.call("set_text", "Agent/state", "")
 	_debug_draw_2d.call("set_text", "Agent/target", "")
+	_debug_draw_2d.call("set_text", "Agent/interest_distance", "")
+	_debug_draw_2d.call("set_text", "Agent/threat_distance", "")
 	_debug_draw_2d.call("set_text", "Agent/speed", "")
 	_debug_draw_2d.call("set_text", "Agent/desired_velocity", "")
 	_debug_draw_2d.call("set_text", "Agent/steering_force", "")
@@ -233,3 +237,9 @@ func _read_string_property(property_name: StringName, fallback: String) -> Strin
 
 func _format_vector(value: Vector3) -> String:
 	return "(%.2f, %.2f, %.2f)" % [value.x, value.y, value.z]
+
+
+func _format_distance(value: float) -> String:
+	if value < 0.0:
+		return "--"
+	return "%.2f" % value

@@ -52,8 +52,12 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.34, 0)
 seek_target_path = NodePath("../SeekArriveTarget")
 arrive_target_path = NodePath("../SeekArriveTarget")
 flee_threat_path = NodePath("../FleeThreat")
+interest_target_path = NodePath("../SeekArriveTarget")
+threat_target_path = NodePath("../FleeThreat")
+flee_radius = 0.62
+flee_safe_radius = 1.0
 
-[node name="SeekArriveTarget" type="MeshInstance3D" parent="." unique_id=1066932433]
+[node name="SeekArriveTarget" type="MeshInstance3D" parent="." unique_id=1066932433 groups=["interest_entity"]]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.05, 0.48, -0.48)
 material_override = SubResource("StandardMaterial3D_seek_target")
 mesh = SubResource("SphereMesh_marker")
@@ -65,8 +69,8 @@ modulate = Color(0.72, 1, 0.78, 1)
 text = "SEEK / ARRIVE"
 font_size = 22
 
-[node name="FleeThreat" type="MeshInstance3D" parent="." unique_id=1271892773]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.95, 0.44, 0.52)
+[node name="FleeThreat" type="MeshInstance3D" parent="." unique_id=1271892773 groups=["threat_entity"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.45, 0.44, 0.22)
 material_override = SubResource("StandardMaterial3D_flee_threat")
 mesh = SubResource("SphereMesh_marker")
 
