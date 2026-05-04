@@ -15,6 +15,12 @@ class_name XRAgentSpawner
 @export var spawned_group: StringName = &"xr_spawned_agent"
 @export var agent_debug_enabled: bool = true
 @export_range(0.05, 2.0, 0.01) var hushling_scale: float = 0.32
+@export var use_hushling_scale_variants: bool = true
+@export_range(0.05, 2.0, 0.01) var small_hushling_scale: float = 0.1
+@export_range(0.05, 2.0, 0.01) var medium_hushling_scale: float = 0.25
+@export_range(0.05, 2.0, 0.01) var large_hushling_scale: float = 0.4
+@export_range(0.0, 1.0, 0.01) var small_hushling_chance: float = 0.5
+@export_range(0.0, 1.0, 0.01) var medium_hushling_chance: float = 0.25
 @export_range(0.05, 2.0, 0.01) var crawler_scale: float = 0.4
 @export var randomize_spawn_positions: bool = true
 @export var hushling_count: int = 6
@@ -107,7 +113,7 @@ func _spawn_hushlings(creature_root: Node3D) -> void:
 
 		hushling.name = "HushlingAgent%d" % (index + 1)
 		hushling.add_to_group(spawned_group)
-		hushling.scale = Vector3.ONE * hushling_scale
+		hushling.scale = Vector3.ONE * _sample_hushling_scale()
 		hushling.position = creature_root.to_local(_get_hushling_spawn_position(index))
 		_configure_hushling_before_ready(hushling, index)
 		hushling.ready.connect(Callable(self, "_configure_hushling_after_ready").bind(hushling), CONNECT_ONE_SHOT)
@@ -225,6 +231,20 @@ func _fixed_crawler_count() -> int:
 		return 1
 
 	return crawler_offsets.size()
+
+
+func _sample_hushling_scale() -> float:
+	if not use_hushling_scale_variants:
+		return hushling_scale
+
+	var small_chance: float = clamp(small_hushling_chance, 0.0, 1.0)
+	var medium_chance: float = clamp(medium_hushling_chance, 0.0, 1.0 - small_chance)
+	var roll: float = _rng.randf()
+	if roll < small_chance:
+		return small_hushling_scale
+	if roll < small_chance + medium_chance:
+		return medium_hushling_scale
+	return large_hushling_scale
 
 
 func _sample_spawn_position() -> Vector3:
