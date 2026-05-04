@@ -67,9 +67,11 @@ func _update_facing(delta: float) -> void:
 	var facing_direction: Vector3 = direction if turn_rate_limit_enabled else velocity.normalized()
 	var target_basis: Basis = _basis_from_forward(facing_direction)
 	var rotation_alpha: float = 1.0 - exp(-rotation_response * delta)
-	var current_quat: Quaternion = global_transform.basis.get_rotation_quaternion()
+	var current_quat: Quaternion = global_transform.basis.orthonormalized().get_rotation_quaternion()
 	var target_quat: Quaternion = target_basis.get_rotation_quaternion()
-	var next_basis: Basis = Basis(current_quat.slerp(target_quat, rotation_alpha)).orthonormalized()
+	var next_basis: Basis = _basis_preserving_current_scale(
+		Basis(current_quat.slerp(target_quat, rotation_alpha))
+	)
 
 	var next_transform: Transform3D = global_transform
 	next_transform.basis = next_basis
@@ -109,6 +111,33 @@ func _rotate_direction_toward(current: Vector3, target: Vector3, max_angle: floa
 	return current.rotated(axis, max_angle).normalized()
 
 
+func _smooth_direction_change(
+	current_direction: Vector3,
+	sampled_direction: Vector3,
+	delta: float,
+	smoothing: float,
+	forward_bias: float,
+	max_degrees_per_second: float
+) -> Vector3:
+	var current: Vector3 = _safe_direction(current_direction, direction)
+	var sampled: Vector3 = _safe_direction(sampled_direction, current)
+	var bias: float = clamp(forward_bias, 0.0, 0.95)
+	if bias > 0.0:
+		sampled = _safe_direction(sampled.lerp(current, bias), current)
+
+	var alpha: float = 1.0 - exp(-max(smoothing, 0.0) * delta)
+	var blended: Vector3 = _safe_direction(current.lerp(sampled, alpha), current)
+	if max_degrees_per_second <= 0.0 or delta <= 0.0:
+		return blended
+
+	var max_turn: float = deg_to_rad(max_degrees_per_second) * delta
+	var turn_angle: float = current.angle_to(blended)
+	if turn_angle <= max_turn or turn_angle <= 0.0001:
+		return blended
+
+	return _rotate_direction_toward(current, blended, max_turn)
+
+
 func _orthogonal_axis(direction_value: Vector3) -> Vector3:
 	var axis: Vector3 = Vector3.UP.cross(direction_value)
 	if axis.length_squared() <= 0.0001:
@@ -116,6 +145,13 @@ func _orthogonal_axis(direction_value: Vector3) -> Vector3:
 	if axis.length_squared() <= 0.0001:
 		return Vector3.UP
 	return axis.normalized()
+
+
+func _side_axis_for(forward_direction: Vector3) -> Vector3:
+	var flat_forward := Vector3(forward_direction.x, 0.0, forward_direction.z)
+	flat_forward = _safe_direction(flat_forward, Vector3.FORWARD)
+	var side: Vector3 = Vector3.UP.cross(flat_forward)
+	return _safe_direction(side, Vector3.RIGHT)
 
 
 func _basis_from_forward(forward: Vector3) -> Basis:
@@ -129,6 +165,18 @@ func _basis_from_forward(forward: Vector3) -> Basis:
 
 	var y_axis: Vector3 = z_axis.cross(x_axis).normalized()
 	return Basis(x_axis, y_axis, z_axis).orthonormalized()
+
+
+func _basis_preserving_current_scale(rotation_basis: Basis) -> Basis:
+	var current_scale: Vector3 = global_transform.basis.get_scale()
+	if absf(current_scale.x) <= 0.0001:
+		current_scale.x = 1.0
+	if absf(current_scale.y) <= 0.0001:
+		current_scale.y = 1.0
+	if absf(current_scale.z) <= 0.0001:
+		current_scale.z = 1.0
+
+	return rotation_basis.orthonormalized().scaled(current_scale)
 
 
 func _safe_direction(value: Vector3, fallback: Vector3) -> Vector3:

@@ -1,15 +1,32 @@
-[gd_scene load_steps=3 format=3]
+[gd_scene load_steps=4 format=3]
 
 [ext_resource type="Script" path="res://scripts/agents/CrawlerAgent.gd" id="1_crawler_agent"]
 [ext_resource type="PackedScene" path="res://scenes/visuals/CrawlerVisual.tscn" id="2_crawler_visual"]
+[ext_resource type="Script" path="res://scripts/debug/AgentDebugDraw.gd" id="3_debug_draw"]
 
 [node name="CrawlerAgent" type="Node3D" groups=["interest_entity"]]
 script = ExtResource("1_crawler_agent")
-max_speed = 0.26
-max_force = 0.24
+max_speed = 0.34
+max_force = 0.3
 mass = 1.25
+turn_rate_limit_enabled = true
+max_turn_degrees_per_second = 95.0
 face_movement_direction = false
 rotation_response = 2.6
 
 [node name="VisualRoot" parent="." instance=ExtResource("2_crawler_visual")]
 scale = Vector3(0.72, 0.72, 0.72)
+
+[node name="AgentDebugDraw" type="Node3D" parent="."]
+script = ExtResource("3_debug_draw")
+agent_kind = "Crawler"
+show_final_velocity = true
+show_target_ray = false
+line_thickness = 0.0
+center_brightness = 0.0
+direction_vector_length = 0.36
+velocity_vector_scale = 1.25
+force_vector_scale = 1.45
+arrow_head_size = 0.018
+label_height = 0.34
+label_font_size = 14

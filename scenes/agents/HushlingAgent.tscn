@@ -7,9 +7,19 @@
 [node name="HushlingAgent" type="Node3D" groups=["hushling"]]
 script = ExtResource("1_agent")
 turn_rate_limit_enabled = true
-max_turn_degrees_per_second = 240.0
+max_turn_degrees_per_second = 150.0
 
 [node name="VisualRoot" parent="." instance=ExtResource("3_visual_timid")]
 
 [node name="AgentDebugDraw" type="Node3D" parent="."]
 script = ExtResource("2_debug")
+agent_kind = "Hushling"
+show_final_velocity = false
+line_thickness = 0.0
+center_brightness = 0.0
+direction_vector_length = 0.32
+velocity_vector_scale = 1.05
+force_vector_scale = 1.25
+arrow_head_size = 0.018
+label_height = 0.34
+label_font_size = 13

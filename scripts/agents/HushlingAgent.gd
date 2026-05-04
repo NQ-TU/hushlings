@@ -126,7 +126,11 @@ const HushlingVisualBoldScene := preload("res://scenes/visuals/HushlingVisual_Bo
 @export_range(0.0, 2.0, 0.01) var wander_strength: float = 0.86
 @export_range(0.01, 3.0, 0.01) var wander_frequency: float = 0.18
 @export_range(0.01, 10.0, 0.01) var wander_smoothing: float = 1.25
-@export_range(0.0, 1.0, 0.01) var vertical_wander_amount: float = 0.24
+@export_range(0.0, 1.0, 0.01) var vertical_wander_amount: float = 0.34
+@export_range(0.1, 5.0, 0.01) var vertical_wander_frequency_scale: float = 2.15
+@export_range(0.0, 1.0, 0.01) var lateral_wander_amount: float = 0.28
+@export_range(0.0, 0.95, 0.01) var wander_forward_bias: float = 0.62
+@export_range(1.0, 180.0, 1.0) var wander_turn_degrees_per_second: float = 34.0
 
 @export_group("Idle Cadence")
 @export var idle_cadence_enabled: bool = true
@@ -140,6 +144,8 @@ const HushlingVisualBoldScene := preload("res://scenes/visuals/HushlingVisual_Bo
 @export_group("Home Tether")
 @export_range(0.1, 10.0, 0.01) var home_radius: float = 1.25
 @export_range(0.0, 4.0, 0.01) var home_tether_strength: float = 0.72
+@export var use_home_bounds: bool = false
+@export var home_bounds_size: Vector3 = Vector3.ZERO
 
 @export_group("Social Boids")
 @export var social_forces_enabled: bool = true
@@ -321,9 +327,14 @@ func _apply_debug_visibility() -> void:
 
 func _update_wander_direction(delta: float) -> void:
 	var sampled_direction: Vector3 = _sample_wander_direction(_elapsed_time)
-	var alpha: float = 1.0 - exp(-wander_smoothing * delta)
-	current_wander_direction = current_wander_direction.lerp(sampled_direction, alpha)
-	current_wander_direction = _safe_direction(current_wander_direction, Vector3.FORWARD)
+	current_wander_direction = _smooth_direction_change(
+		current_wander_direction,
+		sampled_direction,
+		delta,
+		wander_smoothing,
+		wander_forward_bias,
+		wander_turn_degrees_per_second
+	)
 
 
 func _update_idle_cadence(delta: float) -> void:
@@ -463,6 +474,16 @@ func _get_flee_breakup_direction(flee_direction: Vector3) -> Vector3:
 func _apply_home_tether(input_desired_velocity: Vector3) -> Vector3:
 	if not _should_apply_home_tether():
 		return input_desired_velocity
+
+	if use_home_bounds:
+		return SteeringHelper.apply_home_box_tether(
+			global_position,
+			home_position,
+			input_desired_velocity,
+			max_speed,
+			home_bounds_size,
+			home_tether_strength
+		)
 
 	return SteeringHelper.apply_home_tether(
 		global_position,
@@ -650,10 +671,12 @@ func _update_target_facing(target: Node3D, delta: float) -> void:
 	target_direction = face_direction
 	var target_basis: Basis = _basis_from_forward(face_direction)
 	var rotation_alpha: float = 1.0 - exp(-player_gaze_turn_response * delta)
-	var current_quat: Quaternion = global_transform.basis.get_rotation_quaternion()
+	var current_quat: Quaternion = global_transform.basis.orthonormalized().get_rotation_quaternion()
 	var target_quat: Quaternion = target_basis.get_rotation_quaternion()
 	var next_transform: Transform3D = global_transform
-	next_transform.basis = Basis(current_quat.slerp(target_quat, rotation_alpha)).orthonormalized()
+	next_transform.basis = _basis_preserving_current_scale(
+		Basis(current_quat.slerp(target_quat, rotation_alpha))
+	)
 	global_transform = next_transform
 
 
@@ -1288,10 +1311,10 @@ func _variation_multiplier(offset: float) -> float:
 
 func _sample_wander_direction(time: float) -> Vector3:
 	var phase: float = time * TAU * wander_frequency + _wander_seed
-	var sample: Vector3 = Vector3(
-		sin(phase * 0.83),
-		sin(phase * 1.37 + 1.4) * vertical_wander_amount,
-		cos(phase * 0.67 + 0.8)
-	)
-
-	return _safe_direction(sample, Vector3.FORWARD)
+	var forward: Vector3 = _safe_direction(current_wander_direction, direction)
+	var side: Vector3 = _side_axis_for(forward)
+	var lateral: float = sin(phase * 0.73 + 0.8) * lateral_wander_amount
+	lateral += sin(phase * 0.31 + 2.2) * lateral_wander_amount * 0.35
+	var vertical: float = sin(phase * vertical_wander_frequency_scale + 1.4) * vertical_wander_amount
+	var sample: Vector3 = forward + side * lateral + Vector3.UP * vertical
+	return _safe_direction(sample, forward)

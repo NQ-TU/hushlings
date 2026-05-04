@@ -7,10 +7,14 @@ const IdleCadenceHelper := preload("res://scripts/agents/IdleCadence.gd")
 const FleeMemoryHelper := preload("res://scripts/agents/FleeMemory.gd")
 
 @export_group("Crawler Wander")
-@export_range(0.0, 2.0, 0.01) var wander_strength: float = 0.76
+@export_range(0.0, 2.0, 0.01) var wander_strength: float = 0.92
 @export_range(0.01, 3.0, 0.01) var wander_frequency: float = 0.12
 @export_range(0.01, 10.0, 0.01) var wander_smoothing: float = 0.9
-@export_range(0.0, 1.0, 0.01) var vertical_wander_amount: float = 0.14
+@export_range(0.0, 1.0, 0.01) var vertical_wander_amount: float = 0.22
+@export_range(0.1, 5.0, 0.01) var vertical_wander_frequency_scale: float = 1.85
+@export_range(0.0, 1.0, 0.01) var lateral_wander_amount: float = 0.18
+@export_range(0.0, 0.95, 0.01) var wander_forward_bias: float = 0.72
+@export_range(1.0, 180.0, 1.0) var wander_turn_degrees_per_second: float = 24.0
 
 @export_group("Idle Cadence")
 @export var idle_cadence_enabled: bool = true
@@ -24,6 +28,8 @@ const FleeMemoryHelper := preload("res://scripts/agents/FleeMemory.gd")
 @export_group("Home Tether")
 @export_range(0.1, 10.0, 0.01) var home_radius: float = 1.05
 @export_range(0.0, 4.0, 0.01) var home_tether_strength: float = 0.85
+@export var use_home_bounds: bool = false
+@export var home_bounds_size: Vector3 = Vector3.ZERO
 
 @export_group("Obstacle Avoidance")
 @export var obstacle_avoidance_enabled: bool = true
@@ -98,9 +104,14 @@ func _process(delta: float) -> void:
 
 func _update_wander_direction(delta: float) -> void:
 	var sampled_direction: Vector3 = _sample_wander_direction(_elapsed_time)
-	var alpha: float = 1.0 - exp(-wander_smoothing * delta)
-	current_wander_direction = current_wander_direction.lerp(sampled_direction, alpha)
-	current_wander_direction = _safe_direction(current_wander_direction, Vector3.FORWARD)
+	current_wander_direction = _smooth_direction_change(
+		current_wander_direction,
+		sampled_direction,
+		delta,
+		wander_smoothing,
+		wander_forward_bias,
+		wander_turn_degrees_per_second
+	)
 
 
 func _update_idle_cadence(delta: float) -> void:
@@ -121,6 +132,16 @@ func _update_idle_cadence(delta: float) -> void:
 
 
 func _apply_home_tether(input_desired_velocity: Vector3) -> Vector3:
+	if use_home_bounds:
+		return SteeringHelper.apply_home_box_tether(
+			global_position,
+			home_position,
+			input_desired_velocity,
+			max_speed,
+			home_bounds_size,
+			home_tether_strength
+		)
+
 	return SteeringHelper.apply_home_tether(
 		global_position,
 		home_position,
@@ -201,10 +222,10 @@ func _update_visual() -> void:
 
 func _sample_wander_direction(time: float) -> Vector3:
 	var phase: float = time * TAU * wander_frequency + _wander_seed
-	var sample: Vector3 = Vector3(
-		sin(phase * 0.79 + 0.4),
-		sin(phase * 1.21 + 1.8) * vertical_wander_amount,
-		cos(phase * 0.61 + 0.7)
-	)
-
-	return _safe_direction(sample, Vector3.FORWARD)
+	var forward: Vector3 = _safe_direction(current_wander_direction, direction)
+	var side: Vector3 = _side_axis_for(forward)
+	var lateral: float = sin(phase * 0.66 + 0.4) * lateral_wander_amount
+	lateral += sin(phase * 0.27 + 1.7) * lateral_wander_amount * 0.28
+	var vertical: float = sin(phase * vertical_wander_frequency_scale + 1.8) * vertical_wander_amount
+	var sample: Vector3 = forward + side * lateral + Vector3.UP * vertical
+	return _safe_direction(sample, forward)
