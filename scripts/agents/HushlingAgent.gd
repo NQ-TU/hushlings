@@ -17,7 +17,7 @@ const VISUAL_VARIANT_TIMID := "Timid"
 const VISUAL_VARIANT_BOLD := "Bold"
 
 @export_group("Debug")
-@export var agent_debug_enabled: bool = true
+@export var agent_debug_enabled: bool = false
 
 @export_group("Profile")
 @export var profile: HushlingProfileResource

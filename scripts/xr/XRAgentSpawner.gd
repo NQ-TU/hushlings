@@ -13,7 +13,7 @@ class_name XRAgentSpawner
 @export var spawn_on_ready: bool = true
 @export var clear_existing_on_spawn: bool = true
 @export var spawned_group: StringName = &"xr_spawned_agent"
-@export var agent_debug_enabled: bool = true
+@export var agent_debug_enabled: bool = false
 @export_range(0.05, 2.0, 0.01) var hushling_scale: float = 0.32
 @export var use_hushling_scale_variants: bool = true
 @export_range(0.05, 2.0, 0.01) var small_hushling_scale: float = 0.1
@@ -46,7 +46,7 @@ class_name XRAgentSpawner
 
 @export_group("XR Behaviour Tuning")
 @export var apply_compact_xr_tuning: bool = true
-@export_range(0.1, 5.0, 0.01) var xr_awareness_radius: float = 1.7
+@export_range(0.1, 5.0, 0.01) var xr_awareness_radius: float = 1.35
 @export_range(0.1, 5.0, 0.01) var xr_observe_distance: float = 0.45
 @export_range(0.05, 5.0, 0.01) var xr_interest_flee_radius: float = 0.62
 @export_range(0.1, 5.0, 0.01) var xr_flee_safe_radius: float = 1.0

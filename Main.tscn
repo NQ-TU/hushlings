@@ -5,9 +5,27 @@
 [ext_resource type="AudioStream" uid="uid://b4xay1bpqa2q8" path="res://resources/audio/background.mp3" id="4_fos0i"]
 [ext_resource type="Script" uid="uid://c86qd5gttov06" path="res://scripts/agents/PlayerInfluence.gd" id="4_player_influence"]
 [ext_resource type="PackedScene" path="res://scenes/audio/AmbientAudioLoop.tscn" id="5_ambient_audio"]
+[ext_resource type="Script" uid="uid://c3pet1dy2dmap" path="res://scripts/debug/XRDebugToggleZone.gd" id="6_debug_toggle"]
 
 [sub_resource type="SphereShape3D" id="SphereShape3D_hand_obstacle"]
 radius = 0.16
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_debug_toggle"]
+transparency = 1
+albedo_color = Color(0.18, 0.72, 0.95, 0.72)
+roughness = 0.35
+emission_enabled = true
+emission = Color(0.18, 0.72, 0.95, 1)
+emission_energy_multiplier = 0.35
+
+[sub_resource type="SphereMesh" id="SphereMesh_debug_toggle"]
+radius = 0.025
+height = 0.05
+radial_segments = 12
+rings = 6
+
+[sub_resource type="SphereShape3D" id="SphereShape3D_debug_toggle"]
+radius = 0.075
 
 [sub_resource type="Sky" id="Sky_glv2v"]
 
@@ -38,11 +56,31 @@ tracker = &"/user/hand_tracker/left"
 
 [node name="XRHandModifier3D" type="XRHandModifier3D" parent="XROrigin3D/LeftHand/OpenXRFbHandTrackingMesh" unique_id=263836763]
 
-[node name="HandObstacle" type="Area3D" parent="XROrigin3D/LeftHand" unique_id=1284084247 groups=["obstacle", "player", "player_hand"]]
+[node name="HandObstacle" type="Area3D" parent="XROrigin3D/LeftHand" unique_id=1284084247 groups=["left_player_hand", "obstacle", "player", "player_hand"]]
 collision_mask = 0
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="XROrigin3D/LeftHand/HandObstacle" unique_id=57178784]
 shape = SubResource("SphereShape3D_hand_obstacle")
+
+[node name="DebugToggleZone" type="Area3D" parent="XROrigin3D/LeftHand" unique_id=537422561 groups=["debug_toggle"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.18, 0.04, -0.03)
+collision_layer = 2
+script = ExtResource("6_debug_toggle")
+reference_path = NodePath("../../XRCamera3D")
+
+[node name="Indicator" type="MeshInstance3D" parent="XROrigin3D/LeftHand/DebugToggleZone" unique_id=521910787]
+material_override = SubResource("StandardMaterial3D_debug_toggle")
+mesh = SubResource("SphereMesh_debug_toggle")
+
+[node name="Caption" type="Label3D" parent="XROrigin3D/LeftHand/DebugToggleZone" unique_id=1712797592]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.09279587, 0)
+billboard = 1
+modulate = Color(0.84, 0.96, 1, 0.82)
+text = "Toggle Gizmos"
+font_size = 18
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="XROrigin3D/LeftHand/DebugToggleZone" unique_id=429323824]
+shape = SubResource("SphereShape3D_debug_toggle")
 
 [node name="RightHand" type="XRNode3D" parent="XROrigin3D" unique_id=2003791222]
 tracker = &"/user/hand_tracker/right"
@@ -79,7 +117,7 @@ bones/25/name = "RightLittleTip"
 [node name="XRHandModifier3D" type="XRHandModifier3D" parent="XROrigin3D/RightHand/OpenXRFbHandTrackingMesh" unique_id=1025405066]
 hand_tracker = &"/user/hand_tracker/right"
 
-[node name="HandObstacle" type="Area3D" parent="XROrigin3D/RightHand" unique_id=132134419 groups=["obstacle", "player", "player_hand"]]
+[node name="HandObstacle" type="Area3D" parent="XROrigin3D/RightHand" unique_id=132134419 groups=["obstacle", "player", "player_hand", "right_player_hand"]]
 collision_mask = 0
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="XROrigin3D/RightHand/HandObstacle" unique_id=963795431]

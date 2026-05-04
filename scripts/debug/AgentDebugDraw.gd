@@ -20,7 +20,7 @@ const AGENT_KIND_AUTO := "Auto"
 const AGENT_KIND_HUSHLING := "Hushling"
 
 @export_group("Debug")
-@export var debug_enabled: bool = true
+@export var debug_enabled: bool = false
 @export var target_path: NodePath
 @export_enum("Auto", "Hushling", "Crawler") var agent_kind: String = AGENT_KIND_AUTO
 @export var allow_keyboard_toggle: bool = true
@@ -52,6 +52,7 @@ var _debug_draw_3d: Object
 
 
 func _ready() -> void:
+	add_to_group(&"agent_debug_draw")
 	_resolve_target()
 	_resolve_debug_draw()
 
