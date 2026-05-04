@@ -39,6 +39,7 @@ const FleeMemoryHelper := preload("res://scripts/agents/FleeMemory.gd")
 @export_range(0.05, 5.0, 0.01) var obstacle_feeler_length: float = 0.5
 @export_range(1.0, 85.0, 1.0) var obstacle_feeler_angle_degrees: float = 34.0
 @export_range(0.0, 5.0, 0.01) var obstacle_avoidance_weight: float = 0.72
+@export_range(0.0, 0.5, 0.01) var obstacle_update_interval: float = 0.06
 
 @export_group("Player Interaction")
 @export var avoid_player_body: bool = true
@@ -73,6 +74,7 @@ var _returning_home: bool = false
 var _visual_root: Node3D
 var _idle_cadence := IdleCadenceHelper.new()
 var _player_hand_flee := FleeMemoryHelper.new()
+var _obstacle_update_timer: float = 0.0
 
 
 func _ready() -> void:
@@ -81,6 +83,7 @@ func _ready() -> void:
 
 	home_position = global_position
 	_wander_seed = _make_instance_seed()
+	_obstacle_update_timer = fposmod(_wander_seed, max(obstacle_update_interval, 0.001))
 	_idle_cadence.configure(_wander_seed)
 	_idle_cadence.force_move(move_duration_min, move_duration_max)
 	_begin_next_course()
@@ -110,7 +113,7 @@ func _process(delta: float) -> void:
 			desired_velocity_for_frame = _apply_home_tether(desired_velocity_for_frame)
 
 	desired_velocity_for_frame += _calculate_player_keepout_velocity()
-	desired_velocity_for_frame += _calculate_obstacle_avoidance(desired_velocity_for_frame)
+	desired_velocity_for_frame += _calculate_obstacle_avoidance(desired_velocity_for_frame, delta)
 	apply_desired_velocity(desired_velocity_for_frame, delta)
 	_update_visual()
 
@@ -166,14 +169,17 @@ func _apply_home_tether(input_desired_velocity: Vector3) -> Vector3:
 	)
 
 
-func _calculate_obstacle_avoidance(input_desired_velocity: Vector3) -> Vector3:
-	obstacle_avoidance_force = Vector3.ZERO
-	debug_obstacle_hit = false
-	debug_obstacle_hit_position = Vector3.ZERO
-	debug_obstacle_hit_normal = Vector3.ZERO
+func _calculate_obstacle_avoidance(input_desired_velocity: Vector3, delta: float) -> Vector3:
 	if not obstacle_avoidance_enabled:
+		_clear_obstacle_avoidance_debug()
 		return Vector3.ZERO
 
+	_obstacle_update_timer -= delta
+	if obstacle_update_interval > 0.0 and _obstacle_update_timer > 0.0:
+		return obstacle_avoidance_force
+	_obstacle_update_timer = max(obstacle_update_interval, 0.0)
+
+	_clear_obstacle_avoidance_debug()
 	var result: Dictionary = ObstacleAvoidanceHelper.calculate(
 		self,
 		input_desired_velocity,
@@ -189,6 +195,13 @@ func _calculate_obstacle_avoidance(input_desired_velocity: Vector3) -> Vector3:
 	debug_obstacle_hit_normal = result.get("hit_normal", Vector3.ZERO)
 	_handle_player_hand_feeler_hit(result)
 	return obstacle_avoidance_force
+
+
+func _clear_obstacle_avoidance_debug() -> void:
+	obstacle_avoidance_force = Vector3.ZERO
+	debug_obstacle_hit = false
+	debug_obstacle_hit_position = Vector3.ZERO
+	debug_obstacle_hit_normal = Vector3.ZERO
 
 
 func _calculate_player_keepout_velocity() -> Vector3:

@@ -84,6 +84,7 @@ const HushlingVisualBoldScene := preload("res://scenes/visuals/HushlingVisual_Bo
 @export_range(0.05, 5.0, 0.01) var obstacle_feeler_length: float = 0.55
 @export_range(1.0, 85.0, 1.0) var obstacle_feeler_angle_degrees: float = 34.0
 @export_range(0.0, 5.0, 0.01) var obstacle_avoidance_weight: float = 0.82
+@export_range(0.0, 0.5, 0.01) var obstacle_update_interval: float = 0.06
 
 @export_group("Player Interaction")
 @export var player_influence_enabled: bool = true
@@ -161,11 +162,16 @@ const HushlingVisualBoldScene := preload("res://scenes/visuals/HushlingVisual_Bo
 @export_range(0.0, 5.0, 0.01) var cohesion_weight: float = 0.12
 @export_range(0.0, 5.0, 0.01) var alignment_weight: float = 0.05
 @export var flock_heading_enabled: bool = true
-@export_range(0.0, 1.0, 0.01) var flock_heading_weight: float = 0.28
+@export_range(0.0, 1.0, 0.01) var flock_heading_weight: float = 0.20
 @export_range(1, 8, 1) var flock_heading_min_neighbours: int = 1
 @export var group_flee_enabled: bool = true
 @export_range(0.01, 5.0, 0.01) var group_flee_radius: float = 1.35
 @export_range(0.05, 5.0, 0.01) var group_flee_memory_time: float = 1.2
+
+@export_group("Performance")
+@export_range(0.0, 0.5, 0.01) var social_scan_interval: float = 0.12
+@export_range(0.0, 0.5, 0.01) var perception_update_interval: float = 0.08
+
 @export_group("Individual Variation")
 @export_range(0.0, 1.0, 0.01) var per_agent_variation: float = 0.18
 
@@ -225,6 +231,12 @@ var _alignment_variation: float = 1.0
 var _returning_home: bool = false
 var _idle_cadence := IdleCadenceHelper.new()
 var _player_hand_flee := FleeMemoryHelper.new()
+var _neighbour_nodes: Array = []
+var _social_scan_timer: float = 0.0
+var _obstacle_update_timer: float = 0.0
+var _target_scan_timer: float = 0.0
+var _visibility_scan_timer: float = 0.0
+var _player_gaze_scan_timer: float = 0.0
 
 
 func _ready() -> void:
@@ -232,6 +244,11 @@ func _ready() -> void:
 	home_position = global_position
 	_wander_seed = _make_instance_seed()
 	_setup_individual_variation()
+	_social_scan_timer = 0.0
+	_obstacle_update_timer = fposmod(_wander_seed, max(obstacle_update_interval, 0.001))
+	_target_scan_timer = 0.0
+	_visibility_scan_timer = fposmod(_wander_seed * 0.37, max(perception_update_interval, 0.001))
+	_player_gaze_scan_timer = fposmod(_wander_seed * 0.61, max(perception_update_interval, 0.001))
 	_idle_cadence.configure(_wander_seed)
 	_idle_cadence.force_move(move_duration_min, move_duration_max)
 	current_wander_direction = _sample_wander_direction(0.0)
@@ -249,10 +266,11 @@ func _process(delta: float) -> void:
 	_update_player_hand_flee_memory(delta)
 	_update_startled_timer(delta)
 	_update_home_return_state()
+	_refresh_neighbour_cache(delta)
 	_update_wander_direction(delta)
 	_refresh_neighbour_count()
-	_update_perception_targets()
-	_update_player_gaze_state()
+	_update_perception_targets(delta)
+	_update_player_gaze_state(delta)
 	_update_autonomous_state(delta)
 	_update_idle_cadence(delta)
 
@@ -264,7 +282,7 @@ func _process(delta: float) -> void:
 
 	desired = _apply_home_tether(desired)
 	desired += _calculate_social_forces()
-	desired += _calculate_obstacle_avoidance(desired)
+	desired += _calculate_obstacle_avoidance(desired, delta)
 	desired = SteeringHelper.limit_vector(desired, _get_active_speed_limit())
 	apply_desired_velocity(desired, delta)
 	if _is_observe_state_active():
@@ -354,12 +372,11 @@ func _apply_flock_heading(sampled_direction: Vector3) -> Vector3:
 	if not _can_apply_flock_heading():
 		return sampled_direction
 
-	var neighbours: Array = get_tree().get_nodes_in_group(neighbour_group)
-	var neighbour_count: int = BoidsHelper.neighbour_count(self, neighbours, group_radius)
+	var neighbour_count: int = BoidsHelper.neighbour_count(self, _neighbour_nodes, group_radius)
 	if neighbour_count < flock_heading_min_neighbours:
 		return sampled_direction
 
-	var group_heading: Vector3 = BoidsHelper.average_heading(self, neighbours, group_radius)
+	var group_heading: Vector3 = BoidsHelper.average_heading(self, _neighbour_nodes, group_radius)
 	if group_heading.length_squared() <= 0.0001:
 		return sampled_direction
 
@@ -450,13 +467,12 @@ func _calculate_regroup_velocity() -> Vector3:
 	if not social_forces_enabled or not is_inside_tree():
 		return Vector3.ZERO
 
-	var neighbours: Array = get_tree().get_nodes_in_group(neighbour_group)
-	if BoidsHelper.neighbour_count(self, neighbours, regroup_radius) <= 0:
+	if BoidsHelper.neighbour_count(self, _neighbour_nodes, regroup_radius) <= 0:
 		return Vector3.ZERO
 
 	var regroup_velocity: Vector3 = BoidsHelper.cohesion(
 		self,
-		neighbours,
+		_neighbour_nodes,
 		regroup_radius,
 		max_speed * regroup_speed_scale
 	)
@@ -603,7 +619,6 @@ func _calculate_social_forces() -> Vector3:
 		_update_social_response_debug_values()
 		return Vector3.ZERO
 
-	var neighbours: Array = get_tree().get_nodes_in_group(neighbour_group)
 	var separation_multiplier: float = flee_separation_multiplier if _is_flee_state_active() else 1.0
 	var cohesion_multiplier: float = flee_cohesion_multiplier if _is_flee_state_active() else 1.0
 	var alignment_multiplier: float = flee_alignment_multiplier if _is_flee_state_active() else 1.0
@@ -617,7 +632,7 @@ func _calculate_social_forces() -> Vector3:
 	if separation_enabled:
 		separation_force = BoidsHelper.separation(
 			self,
-			neighbours,
+			_neighbour_nodes,
 			separation_radius,
 			max_speed,
 			_separation_fallback_direction,
@@ -627,30 +642,33 @@ func _calculate_social_forces() -> Vector3:
 		separation_force = Vector3.ZERO
 	cohesion_force = BoidsHelper.cohesion(
 		self,
-		neighbours,
+		_neighbour_nodes,
 		group_radius,
 		max_speed
 	) * cohesion_weight * _cohesion_variation * cohesion_multiplier
 	alignment_force = BoidsHelper.alignment(
 		self,
-		neighbours,
+		_neighbour_nodes,
 		group_radius,
 		max_speed
 	) * alignment_weight * _alignment_variation * alignment_multiplier
-	debug_neighbour_count = BoidsHelper.neighbour_count(self, neighbours, group_radius)
+	debug_neighbour_count = BoidsHelper.neighbour_count(self, _neighbour_nodes, group_radius)
 	_update_social_response_debug_values()
 
 	return separation_force + cohesion_force + alignment_force
 
 
-func _calculate_obstacle_avoidance(input_desired_velocity: Vector3) -> Vector3:
-	obstacle_avoidance_force = Vector3.ZERO
-	debug_obstacle_hit = false
-	debug_obstacle_hit_position = Vector3.ZERO
-	debug_obstacle_hit_normal = Vector3.ZERO
+func _calculate_obstacle_avoidance(input_desired_velocity: Vector3, delta: float) -> Vector3:
 	if not obstacle_avoidance_enabled:
+		_clear_obstacle_avoidance_debug()
 		return Vector3.ZERO
 
+	_obstacle_update_timer -= delta
+	if obstacle_update_interval > 0.0 and _obstacle_update_timer > 0.0:
+		return obstacle_avoidance_force
+	_obstacle_update_timer = max(obstacle_update_interval, 0.0)
+
+	_clear_obstacle_avoidance_debug()
 	var result: Dictionary = ObstacleAvoidanceHelper.calculate(
 		self,
 		input_desired_velocity,
@@ -666,6 +684,13 @@ func _calculate_obstacle_avoidance(input_desired_velocity: Vector3) -> Vector3:
 	debug_obstacle_hit_normal = result.get("hit_normal", Vector3.ZERO)
 	_handle_player_hand_feeler_hit(result)
 	return obstacle_avoidance_force
+
+
+func _clear_obstacle_avoidance_debug() -> void:
+	obstacle_avoidance_force = Vector3.ZERO
+	debug_obstacle_hit = false
+	debug_obstacle_hit_position = Vector3.ZERO
+	debug_obstacle_hit_normal = Vector3.ZERO
 
 
 func _handle_player_hand_feeler_hit(result: Dictionary) -> void:
@@ -701,26 +726,40 @@ func _refresh_neighbour_count() -> void:
 		debug_neighbour_count = 0
 		return
 
-	debug_neighbour_count = BoidsHelper.neighbour_count(
-		self,
-		get_tree().get_nodes_in_group(neighbour_group),
-		group_radius
-	)
+	debug_neighbour_count = BoidsHelper.neighbour_count(self, _neighbour_nodes, group_radius)
 
 
-func _update_player_gaze_state() -> void:
-	debug_player_gaze_direct = false
-	debug_player_gaze_distance = -1.0
-	debug_player_gaze_source_name = ""
-	_direct_player_gaze_source = null
+func _refresh_neighbour_cache(delta: float) -> void:
+	if not social_forces_enabled or not is_inside_tree():
+		_neighbour_nodes.clear()
+		_social_scan_timer = 0.0
+		return
 
+	_social_scan_timer -= delta
+	if social_scan_interval > 0.0 and _social_scan_timer > 0.0:
+		return
+
+	_social_scan_timer = max(social_scan_interval, 0.0)
+	_neighbour_nodes = get_tree().get_nodes_in_group(neighbour_group)
+
+
+func _update_player_gaze_state(delta: float) -> void:
 	if not player_influence_enabled or not startle_from_direct_player_gaze or not is_inside_tree():
+		_clear_player_gaze_debug()
 		return
 	if _get_isolation_factor() < player_gaze_isolation_threshold:
+		_clear_player_gaze_debug()
 		return
 	if _is_flee_state_active():
+		_clear_player_gaze_debug()
 		return
 
+	_player_gaze_scan_timer -= delta
+	if perception_update_interval > 0.0 and _player_gaze_scan_timer > 0.0:
+		return
+	_player_gaze_scan_timer = max(perception_update_interval, 0.0)
+
+	_clear_player_gaze_debug()
 	var los_collision_mask: int = perception_los_collision_mask if use_raycast_line_of_sight else 0
 	_direct_player_gaze_source = PlayerPerceptionHelper.find_direct_gaze_source(
 		self,
@@ -737,6 +776,13 @@ func _update_player_gaze_state() -> void:
 	debug_player_gaze_direct = true
 	debug_player_gaze_distance = global_position.distance_to(_direct_player_gaze_source.global_position)
 	debug_player_gaze_source_name = _direct_player_gaze_source.name
+
+
+func _clear_player_gaze_debug() -> void:
+	debug_player_gaze_direct = false
+	debug_player_gaze_distance = -1.0
+	debug_player_gaze_source_name = ""
+	_direct_player_gaze_source = null
 
 
 func _should_startle_from_player_gaze() -> bool:
@@ -776,8 +822,7 @@ func _update_target_facing(target: Node3D, delta: float) -> void:
 func _update_autonomous_state(delta: float) -> void:
 	debug_interest_distance = _distance_to_or_negative(_interest_target)
 	debug_threat_distance = _distance_to_or_negative(_threat_target)
-	debug_interest_visible = _can_observe_interest_target()
-	debug_interest_sees_agent = _interest_target_has_los_to_agent()
+	_update_interest_visibility_cache(delta)
 	debug_player_hand_flee_active = _is_player_hand_flee_active()
 	_update_social_response_debug_values()
 	_update_internal_variables(delta)
@@ -1074,7 +1119,12 @@ func _update_current_state_label() -> void:
 		current_state = HushlingStateMachine.state_name(_autonomous_state)
 
 
-func _update_perception_targets() -> void:
+func _update_perception_targets(delta: float) -> void:
+	_target_scan_timer -= delta
+	if perception_update_interval > 0.0 and _target_scan_timer > 0.0:
+		return
+	_target_scan_timer = max(perception_update_interval, 0.0)
+
 	_interest_target = _get_node3d_or_null(interest_target_path)
 	_threat_target = _get_node3d_or_null(threat_target_path)
 
@@ -1096,6 +1146,8 @@ func _update_perception_targets() -> void:
 			threat_group,
 			max(_get_effective_flee_safe_radius(), _get_effective_threat_flee_radius())
 		)
+
+	_visibility_scan_timer = 0.0
 
 
 func _get_node3d_or_null(path: NodePath) -> Node3D:
@@ -1211,9 +1263,9 @@ func _find_group_flee_source() -> Node3D:
 
 	var nearest_source: Node3D
 	var nearest_distance_sq: float = group_flee_radius * group_flee_radius
-	for candidate in get_tree().get_nodes_in_group(neighbour_group):
+	for candidate in _neighbour_nodes:
 		var neighbour := candidate as Node3D
-		if neighbour == null or neighbour == self:
+		if neighbour == null or neighbour == self or not is_instance_valid(neighbour):
 			continue
 
 		var distance_sq: float = global_position.distance_squared_to(neighbour.global_position)
@@ -1233,9 +1285,9 @@ func _find_group_flee_source() -> Node3D:
 
 
 func _get_group_flee_clear_distance(group_flee_source: Node3D) -> float:
-	for candidate in get_tree().get_nodes_in_group(neighbour_group):
+	for candidate in _neighbour_nodes:
 		var neighbour := candidate as Node3D
-		if neighbour == null or neighbour == self:
+		if neighbour == null or neighbour == self or not is_instance_valid(neighbour):
 			continue
 		if not neighbour.has_method(&"is_propagating_flee") \
 				or not bool(neighbour.call(&"is_propagating_flee")):
@@ -1273,7 +1325,7 @@ func _has_regroup_target() -> bool:
 
 	return BoidsHelper.neighbour_count(
 		self,
-		get_tree().get_nodes_in_group(neighbour_group),
+		_neighbour_nodes,
 		regroup_radius
 	) > 0
 
@@ -1337,6 +1389,32 @@ func _can_observe_interest_target() -> bool:
 
 	debug_interest_los_clear = _has_perception_line_of_sight(self, _interest_target)
 	return debug_interest_los_clear
+
+
+func _update_interest_visibility_cache(delta: float) -> void:
+	if _interest_target == null:
+		_clear_interest_visibility_debug()
+		return
+	if debug_interest_distance < 0.0 or debug_interest_distance > _get_interest_perception_radius():
+		_clear_interest_visibility_debug()
+		return
+
+	_visibility_scan_timer -= delta
+	if perception_update_interval > 0.0 and _visibility_scan_timer > 0.0:
+		return
+	_visibility_scan_timer = max(perception_update_interval, 0.0)
+
+	debug_interest_visible = _can_observe_interest_target()
+	debug_interest_sees_agent = _interest_target_has_los_to_agent()
+
+
+func _clear_interest_visibility_debug() -> void:
+	debug_interest_visible = false
+	debug_interest_sees_agent = false
+	debug_interest_in_fov = false
+	debug_interest_los_clear = false
+	debug_interest_gaze_in_fov = false
+	debug_interest_gaze_los_clear = false
 
 
 func _interest_target_has_los_to_agent() -> bool:

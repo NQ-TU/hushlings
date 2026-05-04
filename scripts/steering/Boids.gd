@@ -21,7 +21,7 @@ static func separation(
 			+ observer_velocity * max(prediction_time, 0.0)
 	for candidate in neighbours:
 		var neighbour := candidate as Node3D
-		if neighbour == null or neighbour == observer:
+		if neighbour == null or neighbour == observer or not is_instance_valid(neighbour):
 			continue
 
 		var neighbour_velocity: Vector3 = _read_vector_property(neighbour, &"velocity")
@@ -68,7 +68,7 @@ static func cohesion(
 	var count: int = 0
 	for candidate in neighbours:
 		var neighbour := candidate as Node3D
-		if neighbour == null or neighbour == observer:
+		if neighbour == null or neighbour == observer or not is_instance_valid(neighbour):
 			continue
 
 		var distance_sq: float = observer.global_position.distance_squared_to(neighbour.global_position)
@@ -103,7 +103,7 @@ static func alignment(
 	var count: int = 0
 	for candidate in neighbours:
 		var neighbour := candidate as Node3D
-		if neighbour == null or neighbour == observer:
+		if neighbour == null or neighbour == observer or not is_instance_valid(neighbour):
 			continue
 
 		var distance_sq: float = observer.global_position.distance_squared_to(neighbour.global_position)
@@ -136,7 +136,7 @@ static func average_heading(
 	var count: int = 0
 	for candidate in neighbours:
 		var neighbour := candidate as Node3D
-		if neighbour == null or neighbour == observer:
+		if neighbour == null or neighbour == observer or not is_instance_valid(neighbour):
 			continue
 
 		var distance_sq: float = observer.global_position.distance_squared_to(neighbour.global_position)
@@ -168,7 +168,7 @@ static func neighbour_count(observer: Node3D, neighbours: Array, radius: float) 
 	var count: int = 0
 	for candidate in neighbours:
 		var neighbour := candidate as Node3D
-		if neighbour == null or neighbour == observer:
+		if neighbour == null or neighbour == observer or not is_instance_valid(neighbour):
 			continue
 
 		if observer.global_position.distance_squared_to(neighbour.global_position) <= radius_sq:

@@ -99,7 +99,7 @@ stream = ExtResource("4_fos0i")
 [node name="XRAgentSpawner" parent="." unique_id=76089007 instance=ExtResource("2_xr_spawner")]
 transform = Transform3D(0.99998826, 0.0041160057, -0.0025558434, -0.0041102585, 0.99998903, 0.0022522742, 0.0025650752, -0.0022417544, 0.9999942, 0, 0, 0)
 crawler_scale = 0.2
-hushling_count = 30
-crawler_count = 5
+hushling_count = 15
+crawler_count = 3
 min_player_spawn_distance = 0.15
 min_agent_spawn_distance = 0.2
