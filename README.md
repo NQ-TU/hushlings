@@ -6,7 +6,11 @@ Student Number: C22533826
 
 Class Group: TU856/Y4
 
-Video: Will record tomorrow before lab.
+## Video
+
+[![YouTube](images\thumbnail_yt.png)](https://youtu.be/yp1FPn4WKMc)
+
+Video link: https://youtu.be/yp1FPn4WKMc
 
 # Description of the project
 
@@ -76,43 +80,43 @@ The boids-style forces are blended into the state movement rather than being a s
 
 # List of classes/assets in the project
 
-| Class/asset                                            | Source                                                                              |
-| ------------------------------------------------------ | ----------------------------------------------------------------------------------- |
-| `res://Main.tscn`                                      | Self assembled XR/passthrough main scene                                            |
-| `res://scenes/sandbox/BehaviourSandbox.tscn`           | Self written desktop behaviour test scene                                           |
-| `res://scenes/agents/HushlingAgent.tscn`               | Self written agent scene                                                            |
-| `res://scenes/agents/CrawlerAgent.tscn`                | Self written agent scene                                                            |
-| `res://scenes/agents/PlayerInfluence.tscn`             | Self written player influence scene                                                 |
-| `res://scenes/visuals/HushlingVisual_Timid.tscn`       | Self written procedural visual scene                                                |
-| `res://scenes/visuals/HushlingVisual_Bold.tscn`        | Self written procedural visual scene                                                |
-| `res://scenes/visuals/CrawlerVisual.tscn`              | Self written procedural visual scene                                                |
-| `res://scripts/agents/AgentMotor3D.gd`                 | Self written                                                                        |
-| `res://scripts/agents/HushlingAgent.gd`                | Self written                                                                        |
-| `res://scripts/agents/CrawlerAgent.gd`                 | Self written                                                                        |
-| `res://scripts/agents/PlayerInfluence.gd`              | Self written                                                                        |
-| `res://scripts/agents/FleeMemory.gd`                   | Self written                                                                        |
-| `res://scripts/agents/IdleCadence.gd`                  | Self written                                                                        |
-| `res://scripts/fsm/HushlingStateMachine.gd`            | Self written                                                                        |
-| `res://scripts/profiles/HushlingProfile.gd`            | Self written                                                                        |
-| `res://resources/hushlings/HushlingProfile_Timid.tres` | Self written tuning resource                                                        |
-| `res://resources/hushlings/HushlingProfile_Bold.tres`  | Self written tuning resource                                                        |
-| `res://scripts/steering/Steering.gd`                   | Self written, based on steering behaviour principles from class                     |
-| `res://scripts/steering/Boids.gd`                      | Self written, based on boids principles from class                                  |
-| `res://scripts/steering/ObstacleAvoidance.gd`          | Self written                                                                        |
-| `res://scripts/perception/AgentPerception.gd`          | Self written                                                                        |
-| `res://scripts/perception/PlayerPerception.gd`         | Self written                                                                        |
-| `res://scripts/debug/AgentDebugDraw.gd`                | Self written wrapper using DebugDraw3D                                              |
-| `res://scripts/visuals/HushlingVisual.gd`              | Self written                                                                        |
-| `res://scripts/visuals/TentacleIKChain.gd`             | Self written procedural/IK visual helper                                            |
-| `res://scripts/visuals/CrawlerVisual.gd`               | Self written                                                                        |
-| `res://scripts/visuals/CrawlerAppendageIKChain.gd`     | Self written procedural/IK visual helper                                            |
-| `res://scripts/audio/AgentAudioEmitter.gd`             | Self written                                                                        |
-| `res://scripts/audio/AmbientAudioLoop.gd`              | Self written                                                                        |
-| `res://scripts/xr/XRAgentSpawner.gd`                   | Self written                                                                        |
-| `res://resources/audio/*.mp3`                          | Project audio files; final external sources should be listed if any were downloaded |
-| `res://addons/debug_draw_3d/`                          | External DebugDraw3D addon, MIT licence                                             |
-| `res://addons/godot-xr-tools/`                         | External Godot XR Tools addon, MIT licence                                          |
-| `res://addons/godotopenxrvendors/`                     | External Godot OpenXR Vendors addon                                                 |
+| Class/asset                                            | Source                                                          |
+| ------------------------------------------------------ | --------------------------------------------------------------- |
+| `res://Main.tscn`                                      | Self assembled XR/passthrough main scene                        |
+| `res://scenes/sandbox/BehaviourSandbox.tscn`           | Self written desktop behaviour test scene                       |
+| `res://scenes/agents/HushlingAgent.tscn`               | Self written agent scene                                        |
+| `res://scenes/agents/CrawlerAgent.tscn`                | Self written agent scene                                        |
+| `res://scenes/agents/PlayerInfluence.tscn`             | Self written player influence scene                             |
+| `res://scenes/visuals/HushlingVisual_Timid.tscn`       | Self written procedural visual scene                            |
+| `res://scenes/visuals/HushlingVisual_Bold.tscn`        | Self written procedural visual scene                            |
+| `res://scenes/visuals/CrawlerVisual.tscn`              | Self written procedural visual scene                            |
+| `res://scripts/agents/AgentMotor3D.gd`                 | Self written                                                    |
+| `res://scripts/agents/HushlingAgent.gd`                | Self written                                                    |
+| `res://scripts/agents/CrawlerAgent.gd`                 | Self written                                                    |
+| `res://scripts/agents/PlayerInfluence.gd`              | Self written                                                    |
+| `res://scripts/agents/FleeMemory.gd`                   | Self written                                                    |
+| `res://scripts/agents/IdleCadence.gd`                  | Self written                                                    |
+| `res://scripts/fsm/HushlingStateMachine.gd`            | Self written                                                    |
+| `res://scripts/profiles/HushlingProfile.gd`            | Self written                                                    |
+| `res://resources/hushlings/HushlingProfile_Timid.tres` | Self written tuning resource                                    |
+| `res://resources/hushlings/HushlingProfile_Bold.tres`  | Self written tuning resource                                    |
+| `res://scripts/steering/Steering.gd`                   | Self written, based on steering behaviour principles from class |
+| `res://scripts/steering/Boids.gd`                      | Self written, based on boids principles from class              |
+| `res://scripts/steering/ObstacleAvoidance.gd`          | Self written                                                    |
+| `res://scripts/perception/AgentPerception.gd`          | Self written                                                    |
+| `res://scripts/perception/PlayerPerception.gd`         | Self written                                                    |
+| `res://scripts/debug/AgentDebugDraw.gd`                | Self written wrapper using DebugDraw3D                          |
+| `res://scripts/visuals/HushlingVisual.gd`              | Self written                                                    |
+| `res://scripts/visuals/TentacleIKChain.gd`             | Self written procedural/IK visual helper                        |
+| `res://scripts/visuals/CrawlerVisual.gd`               | Self written                                                    |
+| `res://scripts/visuals/CrawlerAppendageIKChain.gd`     | Self written procedural/IK visual helper                        |
+| `res://scripts/audio/AgentAudioEmitter.gd`             | Self written                                                    |
+| `res://scripts/audio/AmbientAudioLoop.gd`              | Self written                                                    |
+| `res://scripts/xr/XRAgentSpawner.gd`                   | Self written                                                    |
+| `res://resources/audio/*.mp3`                          | Project audio files; sourced from pixabuy                       |
+| `res://addons/debug_draw_3d/`                          | External DebugDraw3D addon, MIT licence                         |
+| `res://addons/godot-xr-tools/`                         | External Godot XR Tools addon, MIT licence                      |
+| `res://addons/godotopenxrvendors/`                     | External Godot OpenXR Vendors addon                             |
 
 # References
 
