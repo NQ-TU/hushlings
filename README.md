@@ -8,7 +8,7 @@ Class Group: TU856/Y4
 
 ## Video
 
-[![YouTube](images\thumbnail_yt.png)](https://youtu.be/yp1FPn4WKMc)
+[![YouTube](images/thumbnail_yt.png)](https://youtu.be/yp1FPn4WKMc)
 
 Video link: https://youtu.be/yp1FPn4WKMc
 
